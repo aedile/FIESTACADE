@@ -1,0 +1,129 @@
+/*
+ * main.cpp - MINIMAME launcher.
+ *
+ * The medal has a sticky selection: once a game is picked it boots straight into
+ * it, skipping this menu entirely, until someone deliberately comes back. So most
+ * of the time this code runs for a few milliseconds and hands over.
+ *
+ *   nothing selected            -> browse
+ *   selected, installed         -> boot it
+ *   button held at power-on     -> forget the selection, browse
+ *   selected but never confirms -> after MEDALBOOT_MAX_ATTEMPTS, browse
+ */
+#include "menu.h"
+#include "input.h"
+#include "games.h"
+#include "mqart.h"
+#include "medalboot.h"
+#include "display.h"
+#include "nvs_flash.h"
+#include "esp_log.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+static const char *TAG = "minimame";
+
+#define BOOT_ESCAPE_MS  600      /* hold the button this long at power-on for the menu */
+#define HOLD_REDRAW_MS   50      /* repaint rate while the progress bar is filling */
+
+/* True only if the button stayed down for the whole window - a knock will not do. */
+static bool button_held_at_boot(void)
+{
+    for (int t = 0; t < BOOT_ESCAPE_MS; t += 20) {
+        if (!input_button_down()) return false;
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+    return true;
+}
+
+static void launch(const char *rom)
+{
+    menu_select_rom(rom);
+    menu_set_mode(MENU_LAUNCHING);
+    menu_render();
+    medalboot_note_attempt();
+    game_launch(rom);            /* does not return */
+}
+
+extern "C" void app_main(void)
+{
+    esp_err_t nv = nvs_flash_init();
+    if (nv == ESP_ERR_NVS_NO_FREE_PAGES || nv == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+
+    display_init();
+    display_set_backlight(DISPLAY_BRIGHTNESS_ACTIVE);
+    menu_init();
+
+    if (mqart_init() != ESP_OK) {
+        ESP_LOGE(TAG, "no marquee data");
+        menu_show_message("NO ARTWORK", "FLASH THE MQART PARTITION");
+        menu_render();
+        while (true) vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    input_init();
+
+    char sel[24];
+    if (button_held_at_boot()) {
+        ESP_LOGI(TAG, "button held at boot - clearing the selection");
+        medalboot_clear_selected();
+        /* Wait for release so the same press does not immediately pick a game. */
+        while (input_button_down()) vTaskDelay(pdMS_TO_TICKS(20));
+    } else if (medalboot_get_selected(sel, sizeof sel)) {
+        if (!game_installed(sel)) {
+            ESP_LOGW(TAG, "%s is selected but not installed", sel);
+            medalboot_clear_selected();
+        } else if (medalboot_attempts() >= MEDALBOOT_MAX_ATTEMPTS) {
+            ESP_LOGW(TAG, "%s failed to start %d times", sel, medalboot_attempts());
+            medalboot_clear_selected();
+            menu_select_rom(sel);
+            menu_show_message("COULD NOT START", "HOLD TO PICK ANOTHER");
+            menu_render();
+            vTaskDelay(pdMS_TO_TICKS(2500));
+            menu_set_mode(MENU_BROWSE);
+        } else {
+            launch(sel);         /* does not return */
+        }
+    }
+
+    /* Open the carousel on whatever was played last. */
+    char last[24];
+    if (medalboot_get_last(last, sizeof last)) menu_select_rom(last);
+    menu_set_mode(MENU_BROWSE);
+
+    ESP_LOGI(TAG, "%d games in the carousel", mqart_count());
+
+    bool dirty = true;
+    int64_t last_hold_draw = 0;
+    while (true) {
+        input_poll();
+
+        nav_t nav = input_take_nav();
+        if (nav == NAV_NEXT) { menu_nav(+1); dirty = true; }
+        else if (nav == NAV_PREV) { menu_nav(-1); dirty = true; }
+
+        if (input_take_hold()) {
+            const char *rom = menu_current_rom();
+            if (rom && game_installed(rom)) {
+                medalboot_set_selected(rom);   /* sticky from now on */
+                launch(rom);                   /* does not return */
+            }
+            dirty = true;                      /* not installed: repaint */
+        }
+
+        /* Animate the progress bar without repainting at full loop rate. */
+        int64_t now = esp_timer_get_time();
+        if (input_hold_ms() > 0 && now - last_hold_draw >= HOLD_REDRAW_MS * 1000) {
+            last_hold_draw = now;
+            dirty = true;
+        }
+        if (input_hold_ms() == 0 && last_hold_draw) { last_hold_draw = 0; dirty = true; }
+
+        if (dirty) { menu_render(); dirty = false; }
+        vTaskDelay(pdMS_TO_TICKS(16));
+    }
+}

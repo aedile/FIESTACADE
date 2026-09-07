@@ -1,0 +1,7 @@
+roms/
+*.zip
+__pycache__/
+.venv/
+build_docker/
+build/
+lcd/preview/

@@ -1,0 +1,133 @@
+# MINIMAME game manifest
+# ============================================================================
+# Every game listed here is pre-approved: artwork exists, a driver exists or is
+# planned, and a partition slot can be reserved for it. This file is the ONLY
+# place you choose what a build contains.
+#
+# HOW A GAME GETS INTO YOUR BUILD
+#
+#   Drop its ROM zip into roms/ using the MAME name below, e.g. roms/galaga.zip
+#
+# That is the whole procedure. `./minimame build` finds it, reserves a slot,
+# puts its marquee in the menu, and leaves everything else out. Games whose ROM
+# you do not have are simply absent - no slot, no menu entry, no wasted flash.
+#
+# To override the automatic behaviour, set `enabled` on a game:
+#   enabled = false   never build it, even if the ROM is present
+#   enabled = true    always build it (it will fail loudly if the ROM is missing)
+#
+# We ship no ROMs. Supplying them is your responsibility.
+# ============================================================================
+
+[build]
+flash_mb      = 16      # W25Q128 on the ESP32-C6-LCD-1.69
+launcher_kb   = 512     # the menu's own slot
+default_slot_kb = 768   # for games whose size we have not measured yet
+
+# --- measured: every one of these has a working build, and the slot is its measured
+# --- binary size rounded up. Sizes as of 6 September 2026.
+
+[[game]]
+rom = "mspacman"
+title = "Ms. Pac-Man"
+project = "PELLETINO"
+slot_kb = 1024
+
+[[game]]
+rom = "polepos"
+title = "Pole Position"
+project = "QUALIFIER"
+slot_kb = 1024
+
+[[game]]
+rom = "starwars"
+title = "Star Wars"
+project = "TRENCHRUNNER"
+slot_kb = 768
+
+[[game]]
+rom = "arkanoidu"
+title = "Arkanoid"
+project = "VAUS"
+slot_kb = 768
+
+[[game]]
+rom = "gyruss"
+title = "Gyruss"
+project = "TOCCATA"
+slot_kb = 768
+
+[[game]]
+rom = "galaga"
+title = "Galaga"
+project = "SWARMFIGHTER"
+slot_kb = 512
+
+[[game]]
+rom = "digdug"
+title = "Dig Dug"
+project = "STRATUM"
+slot_kb = 512
+
+[[game]]
+rom = "dkong"
+title = "Donkey Kong"
+project = "GIRDER"
+slot_kb = 512
+
+[[game]]
+rom = "centiped"
+title = "Centipede"
+project = "CHILOPODA"
+slot_kb = 512
+
+[[game]]
+rom = "frogger"
+title = "Frogger"
+project = "RIBBIT"
+slot_kb = 512
+
+[[game]]
+rom = "rallyx"
+title = "Rally-X"
+project = "SMOKESCREEN"
+slot_kb = 512
+
+[[game]]
+rom = "tempest"
+title = "Tempest"
+project = "SPINDLE"
+slot_kb = 512
+
+[[game]]
+rom = "asteroid"
+title = "Asteroids"
+project = "AEROLITE"
+slot_kb = 512
+
+[[game]]
+rom = "missile"
+title = "Missile Command"
+project = "SILO"
+slot_kb = 512
+
+# --- not in a build yet ------------------------------------------------------
+
+# PELLETINO carries both Pac-Man and Ms. Pac-Man, but which one it is is still a
+# build-time choice, so the two would need two builds of the same repo and the
+# flashing script expects one binary per project. Ms. Pac-Man is the one that
+# ships. Merging them into a single image that reads medalboot_rom() at boot is
+# the fix, and then this can come back on.
+[[game]]
+rom = "pacman"
+title = "Pac-Man"
+project = "PELLETINO"
+enabled = false
+
+# Slow, and not working. Wired up the same way as the rest, but do not spend
+# time on it.
+[[game]]
+rom = "esb"
+title = "Empire Strikes Back"
+project = "WALKERRUN"
+slot_kb = 1024
