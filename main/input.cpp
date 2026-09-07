@@ -70,6 +70,7 @@ static int64_t held_since, last_repeat;
 static nav_t   pending_nav = NAV_NONE;
 
 static bool    boot_was_down, hold_consumed, pending_hold;
+static bool    boot_seen_up;             /* a press only counts once the button has been up after boot */
 static int64_t boot_down_since;
 static int     hold_ms;
 static bool    pwr_was_down;
@@ -165,7 +166,11 @@ void input_poll(void)
     bool pwr  = gpio_get_level(PIN_BTN_PWR) == 0;
 
     /* BOOT is a hold, not a press. Track how long it has been down so the menu can
-     * draw a progress bar, and fire once when it crosses the threshold. */
+     * draw a progress bar, and fire once when it crosses the threshold. A button that
+     * was already down when we started is the tail of whatever brought us here - the
+     * exit hold from a game, most likely - and is not a press until it has been released. */
+    if (!boot) boot_seen_up = true;
+    if (!boot_seen_up) { hold_ms = 0; boot_was_down = boot; return; }
     if (boot && !boot_was_down) { boot_down_since = now; hold_consumed = false; }
     if (boot) {
         hold_ms = (int)((now - boot_down_since) / 1000);

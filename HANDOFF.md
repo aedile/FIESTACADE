@@ -109,6 +109,19 @@
 > is fifteen of sixteen slots. Merging the two into one image behind
 > `medalboot_rom()` would free one; not done.
 >
+> **Exit-to-menu relaunched the game instead.** Root cause: thirteen of the
+> fourteen game images never called `nvs_flash_init()`, so inside `medalboot`
+> every `nvs_open()` failed and returned silently. `medalboot_exit_to_menu()`
+> therefore could not clear the selection, and the restart auto-booted the same
+> game. The same failure meant `medalboot_game_running()` never cleared the
+> attempts counter, so the launcher would have given up on each game after three
+> boots. `medalboot` now initialises NVS itself, lazily, so the contract is
+> self-contained; every game image was rebuilt with it. The launcher also grew
+> two rules of its own: a software restart (`ESP_RST_SW`) can only be a game
+> asking for the menu, so it clears the selection regardless of what the game
+> managed to save; and a button already down at boot is not a press until it has
+> been released, so the tail of an exit hold cannot start a select hold.
+>
 > **Still open:**
 >
 > - The still-pose zero and the eased wind-up have not been felt yet. It is now 12 degrees out, 6

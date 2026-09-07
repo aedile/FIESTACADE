@@ -18,6 +18,7 @@
 #include "display.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -67,8 +68,20 @@ extern "C" void app_main(void)
 
     input_init();
 
+    /*
+     * How we got here decides whether to auto-boot. A power-on or brownout with a game selected
+     * means boot straight into it - that is the sticky selection working. A software restart
+     * can only be a game that asked to leave via medalboot_exit_to_menu(): show the menu, and
+     * clear the selection here too, in case the game image could not (an older image without
+     * NVS initialised failed at that step silently and the restart landed straight back in the
+     * game - the exit gesture appeared to relaunch instead).
+     */
     char sel[24];
-    if (button_held_at_boot()) {
+    if (esp_reset_reason() == ESP_RST_SW) {
+        ESP_LOGI(TAG, "software restart - a game asked for the menu");
+        medalboot_clear_selected();
+        while (input_button_down()) vTaskDelay(pdMS_TO_TICKS(20));   /* the exit hold is probably still down */
+    } else if (button_held_at_boot()) {
         ESP_LOGI(TAG, "button held at boot - clearing the selection");
         medalboot_clear_selected();
         /* Wait for release so the same press does not immediately pick a game. */
