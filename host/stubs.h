@@ -16,7 +16,14 @@ typedef int esp_err_t;
 
 #define MALLOC_CAP_DMA  0
 #define MALLOC_CAP_8BIT 0
-static inline void *heap_caps_malloc(size_t n, int caps) { (void)caps; return malloc(n); }
+static inline void *heap_caps_malloc(size_t n, int caps)
+{
+    (void)caps;
+#ifdef PREVIEW_STRIPS
+    if (n > 100000) return NULL;   /* pretend the whole-screen buffer would not fit */
+#endif
+    return malloc(n);
+}
 
 #define ESP_LOGE(tag, fmt, ...) fprintf(stderr, "E %s: " fmt "\n", tag, ##__VA_ARGS__)
 #define ESP_LOGW(tag, fmt, ...) fprintf(stderr, "W %s: " fmt "\n", tag, ##__VA_ARGS__)

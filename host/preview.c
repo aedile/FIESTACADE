@@ -40,8 +40,18 @@ void display_set_window(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
     win_y = y; win_h = h; win_row = 0;
 }
 
+/*
+ * The panel path, modelled on the real driver. With PREVIEW_TRUNCATING_DRIVER it behaves as
+ * the driver did before it was fixed - one DMA buffer's worth accepted, the rest dropped -
+ * which is what put horizontal bands through the menu on every flash and, once the whole
+ * screen was composed in one go, left only the top fifteen rows painted. The point of
+ * modelling the bug is that the preview reproduces both symptoms and then shows the fix.
+ */
 void display_write_preswapped(const uint16_t *px, uint32_t n)
 {
+#ifdef PREVIEW_TRUNCATING_DRIVER
+    if (n * 2 > DISPLAY_DMA_BUFFER_BYTES) n = DISPLAY_DMA_BUFFER_BYTES / 2;
+#endif
     for (uint32_t i = 0; i < n; i++) {
         int row = win_y + win_row + (int)(i / GFX_W);
         int col = (int)(i % GFX_W);

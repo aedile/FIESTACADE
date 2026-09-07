@@ -37,6 +37,10 @@ extern "C" {
 #define LCD_SPI_HOST    SPI2_HOST
 #define LCD_SPI_CLOCK   80000000  // 80 MHz (max for ST7789)
 
+/* One DMA buffer's worth of pixels. display_write*() accept any length and send it in
+ * pieces this big; it is exposed so a host preview can model the panel path exactly. */
+#define DISPLAY_DMA_BUFFER_BYTES (GAME_WIDTH * 16 * 2)
+
 /**
  * Initialize the display driver
  */

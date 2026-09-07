@@ -61,6 +61,26 @@
 > land on a game or too slow to cross the menu; there is no single rate that is
 > both, which is why it ramps.
 >
+> **The actual cause of the bands, found on the third pass, and the two
+> diagnoses before it were wrong.** `display_write_preswapped()` silently
+> truncated anything larger than one DMA buffer - 7168 bytes, about fifteen
+> rows - and dropped the rest. The launcher pushed 40-row bands of 19200 bytes,
+> so from the very first flash every band painted its first fifteen rows and
+> left the other twenty-five stale. That is the horizontal banding. It was never
+> the font, the progress bar, or the strip-by-strip stall; those were real but
+> beside the point. Composing the whole screen and pushing it once then painted
+> only the top fifteen rows of the entire panel - the "black with a lighter band
+> on top" that finally gave it away. The driver now sends any length in
+> DMA-sized pieces, double-buffered. The games never hit this because they push
+> fourteen rows at a time.
+>
+> Why the host preview could not see it: its panel stub accepted unlimited
+> writes. It now models the DMA limit, and `-DPREVIEW_TRUNCATING_DRIVER` (with
+> `-DPREVIEW_STRIPS` for the original layout) reproduces both symptoms exactly
+> before showing the fix. **A preview that stubs the hardware is only as honest
+> as the stub** - it verified pixels perfectly for two days while the panel path
+> threw most of them away.
+>
 > **Measured on hardware, second pass.** The first banding fix was not enough
 > because it only covered the progress bar. The scroll repaint was the bigger
 > one: every step drew, pushed and waited seven times, so the panel showed new

@@ -18,8 +18,7 @@ static uint8_t *dma_buffer[2] = {nullptr, nullptr}; // Double buffer
 static int current_buffer = 0;
 static spi_transaction_t trans[2]; // Transaction descriptors
 static bool trans_pending = false;
-static constexpr size_t DMA_BUFFER_SIZE =
-    GAME_WIDTH * 16 * 2; // 16 rows for video (was 8)
+static constexpr size_t DMA_BUFFER_SIZE = DISPLAY_DMA_BUFFER_BYTES;
 
 // ST7789 Commands
 #define ST7789_NOP 0x00
@@ -179,67 +178,51 @@ void display_init(void) {
   ESP_LOGI(TAG, "Display initialized");
 }
 
+
+/*
+ * Send `bytes` of panel-ready pixels through the two DMA buffers, DMA_BUFFER_SIZE at a time.
+ *
+ * This used to clamp anything larger to one buffer's worth and drop the rest, silently. The
+ * game renderers never noticed because they push 14 rows at a time, which fits. The launcher
+ * pushes 40-row bands - 19200 bytes against a 7168-byte buffer - so every band painted its
+ * first fifteen rows and left the other twenty-five stale, which is the horizontal banding
+ * that survived every fix aimed at the pixels. Chunking here keeps the double-buffer overlap
+ * (the next memcpy runs while the previous DMA drains) and makes any size work.
+ */
+static void send_chunked(const uint8_t *src, size_t bytes, bool swap)
+{
+  while (bytes > 0) {
+    size_t n = bytes > DMA_BUFFER_SIZE ? DMA_BUFFER_SIZE : bytes;
+    if (trans_pending) {
+      spi_transaction_t *rtrans;
+      spi_device_get_trans_result(spi_handle, &rtrans, portMAX_DELAY);
+      trans_pending = false;
+    }
+    uint8_t *dst = dma_buffer[current_buffer];
+    if (swap) {
+      for (size_t i = 0; i + 1 < n; i += 2) { dst[i] = src[i + 1]; dst[i + 1] = src[i]; }
+    } else {
+      memcpy(dst, src, n);
+    }
+    trans[current_buffer].length = n * 8;
+    trans[current_buffer].rxlength = 0;
+    trans[current_buffer].tx_buffer = dst;
+    trans[current_buffer].rx_buffer = nullptr;
+    trans[current_buffer].user = (void *)1;
+    spi_device_queue_trans(spi_handle, &trans[current_buffer], portMAX_DELAY);
+    trans_pending = true;
+    current_buffer = 1 - current_buffer;
+    src += n;
+    bytes -= n;
+  }
+}
+
 void display_write(const uint16_t *data, uint32_t len) {
-  size_t bytes = len * 2;
-  if (bytes > DMA_BUFFER_SIZE) {
-    bytes = DMA_BUFFER_SIZE;
-  }
-
-  // Wait for previous transfer to complete
-  if (trans_pending) {
-    spi_transaction_t *rtrans;
-    spi_device_get_trans_result(spi_handle, &rtrans, portMAX_DELAY);
-    trans_pending = false;
-  }
-
-  // Copy to current DMA buffer with byte swap
-  uint8_t *dst = dma_buffer[current_buffer];
-  const uint8_t *src = (const uint8_t *)data;
-  for (size_t i = 0; i < bytes; i += 2) {
-    dst[i] = src[i + 1];
-    dst[i + 1] = src[i];
-  }
-
-  // Start async transfer
-  trans[current_buffer].length = bytes * 8;
-  trans[current_buffer].rxlength = 0; // TX only - no receive
-  trans[current_buffer].tx_buffer = dst;
-  trans[current_buffer].rx_buffer = nullptr; // No receive buffer
-  trans[current_buffer].user = (void *)1;    // DC = 1 for data
-  spi_device_queue_trans(spi_handle, &trans[current_buffer], portMAX_DELAY);
-  trans_pending = true;
-
-  // Swap buffers
-  current_buffer = 1 - current_buffer;
+  send_chunked((const uint8_t *)data, (size_t)len * 2, true);
 }
 
 void display_write_preswapped(const uint16_t *data, uint32_t len) {
-  // For pre-byte-swapped data - no copy needed, just DMA directly
-  size_t bytes = len * 2;
-  if (bytes > DMA_BUFFER_SIZE) {
-    bytes = DMA_BUFFER_SIZE;
-  }
-
-  // Wait for previous transfer
-  if (trans_pending) {
-    spi_transaction_t *rtrans;
-    spi_device_get_trans_result(spi_handle, &rtrans, portMAX_DELAY);
-    trans_pending = false;
-  }
-
-  // Copy to DMA buffer (data already byte-swapped)
-  memcpy(dma_buffer[current_buffer], data, bytes);
-
-  // Start async transfer
-  trans[current_buffer].length = bytes * 8;
-  trans[current_buffer].rxlength = 0; // TX only - no receive
-  trans[current_buffer].tx_buffer = dma_buffer[current_buffer];
-  trans[current_buffer].rx_buffer = nullptr; // No receive buffer
-  trans[current_buffer].user = (void *)1;
-  spi_device_queue_trans(spi_handle, &trans[current_buffer], portMAX_DELAY);
-  trans_pending = true;
-
-  current_buffer = 1 - current_buffer;
+  send_chunked((const uint8_t *)data, (size_t)len * 2, false);
 }
 
 void display_wait_done(void) {

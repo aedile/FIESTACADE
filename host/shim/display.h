@@ -2,6 +2,9 @@
 #include "stubs.h"
 #define DISPLAY_WIDTH 240
 #define DISPLAY_HEIGHT 280
+#define GAME_WIDTH 224
+/* must match components/display/include/display.h - the preview models the panel path */
+#define DISPLAY_DMA_BUFFER_BYTES (GAME_WIDTH * 16 * 2)
 #ifdef __cplusplus
 extern "C" {
 #endif
