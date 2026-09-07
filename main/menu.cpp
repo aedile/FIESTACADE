@@ -12,6 +12,8 @@
 #include "input.h"
 #include "display.h"
 #include "esp_heap_caps.h"
+#include "esp_system.h"
+#include "esp_timer.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdio.h>
@@ -29,8 +31,19 @@ static const char *TAG = "menu";
 #define HOLD_W      140
 #define HINT_Y      252
 
-static uint16_t *s_band;                  /* GFX_W * GFX_BAND_H */
-static uint16_t *s_rows;                  /* MQART_BOX_W * GFX_BAND_H */
+/*
+ * How many rows are composed before anything is pushed. Ideally the whole screen: drawing a
+ * strip, pushing it, waiting for the SPI to drain and only then starting the next one leaves
+ * the panel showing new content above the seam and old below it while that walks down, which
+ * is exactly the "bands" you see on every scroll step. Composing the lot and pushing once
+ * makes the change arrive in a single sweep.
+ *
+ * A full screen is 134 KB of DMA-capable RAM. The launcher runs no emulator so it is there,
+ * but if it ever is not this falls back to strips and still works - just visibly.
+ */
+static int       s_band_h;
+static uint16_t *s_band;                  /* GFX_W * s_band_h */
+static uint16_t *s_rows;                  /* MQART_BOX_W * min(s_band_h, MQART_BOX_H) */
 static int s_sel;
 static menu_mode_t s_mode;
 static const char *s_msg1, *s_msg2;
@@ -48,9 +61,19 @@ static inline uint16_t dim_be(uint16_t be)
 
 void menu_init(void)
 {
-    s_band = (uint16_t *)heap_caps_malloc(GFX_W * GFX_BAND_H * 2, MALLOC_CAP_DMA);
-    s_rows = (uint16_t *)heap_caps_malloc(MQART_BOX_W * GFX_BAND_H * 2, MALLOC_CAP_8BIT);
-    if (!s_band || !s_rows) ESP_LOGE(TAG, "out of memory for band buffers");
+    s_band_h = GFX_H;
+    s_band = (uint16_t *)heap_caps_malloc((size_t)GFX_W * s_band_h * 2, MALLOC_CAP_DMA);
+    if (!s_band) {                                  /* no room for the whole screen */
+        s_band_h = GFX_BAND_H;
+        s_band = (uint16_t *)heap_caps_malloc((size_t)GFX_W * s_band_h * 2, MALLOC_CAP_DMA);
+    }
+    int rows_h = s_band_h < MQART_BOX_H ? s_band_h : MQART_BOX_H;
+    s_rows = (uint16_t *)heap_caps_malloc((size_t)MQART_BOX_W * rows_h * 2, MALLOC_CAP_8BIT);
+    if (!s_band || !s_rows) ESP_LOGE(TAG, "out of memory for the frame buffer");
+    else ESP_LOGI(TAG, "composing %d rows at a time (%s), %u bytes; free heap %u",
+                  s_band_h, s_band_h == GFX_H ? "whole screen, one push" : "strips",
+                  (unsigned)((size_t)GFX_W * s_band_h * 2 + (size_t)MQART_BOX_W * rows_h * 2),
+                  (unsigned)esp_get_free_heap_size());
 
     C_BG      = gfx_rgb(  6,   6,   9);
     C_HEAD    = gfx_rgb( 70,  70,  90);
@@ -140,9 +163,15 @@ static void draw_marquee_into(gfx_band_t *b, const mqart_entry_t *e, bool instal
  */
 void menu_render(void) { menu_render_range(0, GFX_H); }
 
+/* microseconds spent in the last full repaint, for the performance log */
+static uint32_t s_last_render_us;
+uint32_t menu_last_render_us(void) { return s_last_render_us; }
+int      menu_band_rows(void) { return s_band_h; }
+
 void menu_render_range(int ry0, int ry1)
 {
     if (!s_band) return;
+    int64_t t0 = esp_timer_get_time();
     const mqart_entry_t *e = mqart_get(s_sel);
     bool installed = e && game_installed(e->rom);
     int  n = mqart_count();
@@ -150,11 +179,11 @@ void menu_render_range(int ry0, int ry1)
     char pos[32];
     snprintf(pos, sizeof pos, "%d/%d", s_sel + 1, n > 0 ? n : 0);
 
-    for (int y0 = 0; y0 < GFX_H; y0 += GFX_BAND_H) {
+    for (int y0 = 0; y0 < GFX_H; y0 += s_band_h) {
         gfx_band_t band;
         band.px = s_band;
         band.y0 = y0;
-        band.h  = (GFX_H - y0) < GFX_BAND_H ? (GFX_H - y0) : GFX_BAND_H;
+        band.h  = (GFX_H - y0) < s_band_h ? (GFX_H - y0) : s_band_h;
         if (y0 + band.h <= ry0 || y0 >= ry1) continue;      /* nothing here changed */
         gfx_clear(&band, C_BG);
 
@@ -201,4 +230,5 @@ void menu_render_range(int ry0, int ry1)
         display_write_preswapped(band.px, (uint32_t)GFX_W * band.h);
         display_wait_done();
     }
+    s_last_render_us = (uint32_t)(esp_timer_get_time() - t0);
 }

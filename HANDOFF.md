@@ -61,18 +61,32 @@
 > land on a game or too slow to cross the menu; there is no single rate that is
 > both, which is why it ramps.
 >
+> **Measured on hardware, second pass.** The first banding fix was not enough
+> because it only covered the progress bar. The scroll repaint was the bigger
+> one: every step drew, pushed and waited seven times, so the panel showed new
+> content above the seam and old below while it walked down. The launcher runs no
+> emulator and had 257 KB free, so it now composes the whole screen and pushes
+> once - **one 10.4 ms sweep instead of seven stalled strips**. It falls back to
+> strips if the 134 KB DMA buffer is ever unavailable, and says which it got at
+> boot.
+>
 > **Still open:**
 >
-> - The retuned detent and the select hold have not been felt yet.
+> - The detent has been retuned twice against feel. It is now 12 degrees out, 6
+>   back, a one-second dwell before the auto-repeat starts, and a wind-up to 170
+>   ms rather than 65. Not felt yet.
 > - Chain-booting a game from the menu has not been exercised on hardware.
 > - Pac-Man is disabled in `games.toml`. PELLETINO carries both it and Ms. Pac-Man
 >   but which one is a build-time choice, so the two would need two builds of one
 >   repo and the flashing script expects one binary per project. Merging them into
 >   a single image that reads `medalboot_rom()` at boot is the fix, and would free
 >   a slot as well.
-> - Star Wars has no in-game exit gesture: its button already carries a sound
->   toggle and a thirteen-second easter egg, and a third hold would not fit. The
->   power-on escape still works there.
+> - ~~Star Wars has no in-game exit gesture.~~ **Wrong, and it was my error.** The
+>   easter egg was supposed to have been removed (task 2 below) and had not been,
+>   so its thirteen-second hold was still occupying the button. The egg is gone
+>   now - along with egg.cpp, the helix MP3 decoder nothing else used, 9 MB of
+>   clips and a 15 MB media partition - and Star Wars has the same fire / 3 s
+>   sound / 10 s exit as every other medal. The image lost 55 KB with it.
 
 
 You are picking up a launcher medal that browses arcade marquees and chain-boots

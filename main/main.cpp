@@ -130,6 +130,7 @@ extern "C" void app_main(void)
 
         if (dirty)          { menu_render(); dirty = false; }
         else if (bar_only)  { menu_render_range(MENU_HOLD_BAR_Y0, MENU_HOLD_BAR_Y1); }
+
         vTaskDelay(pdMS_TO_TICKS(16));
     }
 }

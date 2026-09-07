@@ -40,10 +40,10 @@ static const char *TAG = "input";
  */
 #define NAV_ON_DEG          12.0f        /* cross this to step */
 #define NAV_OFF_DEG          6.0f        /* fall back inside this to re-arm */
-#define NAV_REPEAT_FIRST_US 420000       /* the pause before it starts repeating at all */
-#define NAV_REPEAT_SLOW_US  190000       /* the first repeats, still one at a time */
-#define NAV_REPEAT_FAST_US   65000       /* what it winds up to */
-#define NAV_REPEAT_RAMP          5       /* repeats taken to get there */
+#define NAV_REPEAT_FIRST_US 1000000      /* a full second on the new game before it moves on */
+#define NAV_REPEAT_SLOW_US   360000      /* the first repeats, one at a time and readable */
+#define NAV_REPEAT_FAST_US   170000      /* what it winds up to - fast, but you can still see it */
+#define NAV_REPEAT_RAMP           5      /* repeats taken to get there */
 
 static bool    imu_ok, have_neutral;
 static float   neutral_roll;

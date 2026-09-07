@@ -106,6 +106,9 @@ games/PELLETINO/     Ms. Pac-Man        games/TOCCATA/       Gyruss
 games/VAUS/          Arkanoid           ...and so on
 ```
 
+`games/medal-input/` sits alongside them: not a game, but the shared controls
+component every one of them vendors a copy of.
+
 Every one is a separate git repository with its own GitHub remote, so `games/`
 is ignored by this repository rather than tracked as a pile of submodules. Clone
 or move them freely; `tools/flash_all.sh` looks in `games/` by default and takes
