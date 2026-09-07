@@ -99,6 +99,16 @@ void menu_show_message(const char *l1, const char *l2)
     s_mode = MENU_MESSAGE;
 }
 
+/*
+ * The longest titles do not fit across the panel at double size - "Missile Command" comes to
+ * 238 of the 240 columns and touches both edges - so a title that would run out to the sides
+ * is drawn at single size instead. Only one of the fourteen needs it.
+ */
+static int title_scale(const char *s)
+{
+    return gfx_text_width(s, 2) <= GFX_W - 16 ? 2 : 1;
+}
+
 static void draw_marquee_into(gfx_band_t *b, const mqart_entry_t *e, bool installed)
 {
     int mx = BOX_X + (MQART_BOX_W - e->w) / 2;
@@ -145,7 +155,9 @@ void menu_render(void)
         } else if (e) {
             gfx_text_center(&band, GFX_W / 2, HEADER_Y, "MINIMAME", 1, C_HEAD);
             draw_marquee_into(&band, e, installed || s_mode == MENU_LAUNCHING);
-            gfx_text_center(&band, GFX_W / 2, TITLE_Y, e->title, 2,
+            int ts = title_scale(e->title);
+            /* keep the baseline where it is when the title drops a size */
+            gfx_text_center(&band, GFX_W / 2, TITLE_Y + (2 - ts) * GFX_GLYPH_H / 2, e->title, ts,
                             (installed || s_mode == MENU_LAUNCHING) ? C_TITLE : C_DIM);
 
             if (s_mode == MENU_LAUNCHING) {

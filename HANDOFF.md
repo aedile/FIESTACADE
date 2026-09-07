@@ -31,11 +31,22 @@
 >   running fine — build with `CONFIG_PM_ENABLE=n` and the log comes back. Worth
 >   knowing before assuming a silent medal is a dead one.
 >
+> **The menu has now been looked at**, on hardware and in a host preview
+> (`host/preview`, which compiles the real `menu.cpp` against the real blob).
+> Jesse's report was "weird lines in the menu". It was the font: the glyph
+> outlines are scaled but the pen was always one pixel, so at double size the
+> letters came out spindly and their stair-stepped diagonals read as rows of
+> disconnected dashes. The pen now scales with the text. Ruled out first, and
+> worth not re-deriving: the artwork renders byte-identical to the blob, and the
+> band compositor is exact (`-DGFX_BAND_H=280` gives byte-identical screens).
+>
+> "Missile Command" is 238 of the 240 columns at double size, so a title that
+> would touch the edges now drops to single size. One of the fourteen does.
+>
 > **Still open:**
 >
-> - Nobody has *looked* at the menu. It boots, it loads its art and it counts its
->   games, but the layout, the detent feel and the select hold have never been
->   seen or felt. That is the next thing to do with it in hand.
+> - The detent feel and the select hold have still never been *felt*. The layout
+>   has been seen and is right.
 > - Chain-booting a game from the menu has not been exercised on hardware.
 > - Pac-Man is disabled in `games.toml`. PELLETINO carries both it and Ms. Pac-Man
 >   but which one is a build-time choice, so the two would need two builds of one

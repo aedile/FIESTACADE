@@ -98,6 +98,22 @@ void gfx_line(gfx_band_t *b, int x0, int y0, int x1, int y1, uint16_t colour)
     }
 }
 
+/*
+ * A square pen `w` pixels across, dragged along the line.
+ *
+ * The glyph outlines are scaled but a one-pixel pen is not, so at scale 2 the letters came out
+ * spindly and their diagonals - already stair-stepped by Bresenham - read as rows of
+ * disconnected dashes. That is what the "weird lines" in the menu turned out to be: not the
+ * artwork, not the band compositor, just a stroke font drawn with a pen that never grew.
+ */
+static void gfx_line_pen(gfx_band_t *b, int x0, int y0, int x1, int y1, int w, uint16_t colour)
+{
+    if (w < 1) w = 1;
+    for (int dy = 0; dy < w; dy++)
+        for (int dx = 0; dx < w; dx++)
+            gfx_line(b, x0 + dx, y0 + dy, x1 + dx, y1 + dy, colour);
+}
+
 static const char *glyph_for(char c)
 {
     if (c >= 'a' && c <= 'z') c = (char)(c - 'a' + 'A');
@@ -130,14 +146,17 @@ int gfx_text_width(const char *s, int scale)
 {
     int n = 0;
     for (const char *p = s; *p; p++) n++;
-    return n > 0 ? (n * GFX_ADVANCE - (GFX_ADVANCE - 6)) * scale : 0;
+    /* the last glyph is 6 wide rather than a full advance, plus the pen's own width */
+    return n > 0 ? (n * GFX_ADVANCE - (GFX_ADVANCE - 6)) * scale + scale : 0;
 }
 
 void gfx_text(gfx_band_t *b, int x, int y, const char *s, int scale, uint16_t colour)
 {
     if (scale < 1) scale = 1;
-    /* Skip the whole string if no part of its cell reaches this band. */
-    int top = y, bot = y + GFX_GLYPH_H * scale;
+    /* Skip the whole string if no part of its cell reaches this band. The cell is a little
+     * taller than the glyph grid: the comma drops below the baseline, and the pen adds its
+     * own width at the bottom. */
+    int top = y, bot = y + (GFX_GLYPH_H + 2) * scale + scale;
     if (bot < b->y0 || top >= b->y0 + b->h) return;
 
     for (const char *c = s; *c; c++, x += GFX_ADVANCE * scale) {
@@ -150,7 +169,7 @@ void gfx_text(gfx_band_t *b, int x, int y, const char *s, int scale, uint16_t co
                 /* glyph space has y up; screen has y down */
                 int sx = x + px * scale;
                 int sy = y + (GFX_GLYPH_H - py) * scale;
-                if (!first) gfx_line(b, lx, ly, sx, sy, colour);
+                if (!first) gfx_line_pen(b, lx, ly, sx, sy, scale, colour);
                 lx = sx; ly = sy; first = 0;
             }
             if (*p == ';') p++;
