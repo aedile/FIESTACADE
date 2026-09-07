@@ -1,3 +1,5 @@
+# the game repos live here now, each its own git repo with its own remote
+games/
 roms/
 *.zip
 __pycache__/

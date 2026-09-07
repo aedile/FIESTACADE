@@ -4,10 +4,10 @@
  *   BOOT button (GPIO9) -> HOLD to pick the highlighted game (see INPUT_SELECT_HOLD_MS)
  *   PWR button (GPIO18) -> short: re-level the neutral pose; long (1 s): power off
  *
- * The detent is the important part. Raw tilt would rip through sixteen games in
- * half a second, so a step only fires when roll crosses NAV_ON_DEG, and no
- * further step can fire until roll falls back inside NAV_OFF_DEG. Holding past
- * the threshold auto-repeats, slowly at first.
+ * The detent is the important part. Raw tilt would rip through the whole carousel in half a
+ * second, so a step only fires when roll crosses NAV_ON_DEG, and no further step can fire
+ * until roll falls back inside NAV_OFF_DEG. Holding past the threshold auto-repeats, and the
+ * repeat winds up the longer it is held - see the constants below.
  */
 #include "input.h"
 #include "qmi8658.h"
@@ -28,10 +28,22 @@ static const char *TAG = "input";
 #define PWR_LONG_PRESS_US 1000000
 #define IMU_PERIOD_US       16000        /* ~60 Hz is plenty for a menu */
 
-#define NAV_ON_DEG          18.0f        /* cross this to step */
-#define NAV_OFF_DEG          8.0f        /* fall back inside this to re-arm */
-#define NAV_REPEAT_FIRST_US 450000
-#define NAV_REPEAT_NEXT_US  220000
+/*
+ * The detent. Eighteen degrees to step and eight to re-arm asked for a deliberate lean out and
+ * back for every single game, which is a lot of precision to want fourteen times over. Twelve
+ * and six is a tilt rather than a heave.
+ *
+ * Holding past the threshold auto-repeats, and the repeat winds up the longer it is held: a
+ * flick moves one game, and leaning on it walks the whole carousel in about a second. Without
+ * the wind-up a fixed repeat is either too fast to land on a game or too slow to cross the
+ * menu, and there is no rate that is both.
+ */
+#define NAV_ON_DEG          12.0f        /* cross this to step */
+#define NAV_OFF_DEG          6.0f        /* fall back inside this to re-arm */
+#define NAV_REPEAT_FIRST_US 420000       /* the pause before it starts repeating at all */
+#define NAV_REPEAT_SLOW_US  190000       /* the first repeats, still one at a time */
+#define NAV_REPEAT_FAST_US   65000       /* what it winds up to */
+#define NAV_REPEAT_RAMP          5       /* repeats taken to get there */
 
 static bool    imu_ok, have_neutral;
 static float   neutral_roll;
@@ -39,6 +51,7 @@ static int64_t imu_last_us;
 
 static int     armed = 1;                /* may a step fire? */
 static int     held_dir;                 /* -1, 0, +1 while past threshold */
+static int     repeats;                  /* how many the current hold has fired */
 static int64_t held_since, last_repeat;
 static nav_t   pending_nav = NAV_NONE;
 
@@ -81,7 +94,7 @@ static bool capture_neutral(void)
     if (!imu_ok || !read_roll(&roll)) return false;
     neutral_roll = roll;
     have_neutral = true;
-    armed = 1; held_dir = 0;
+    armed = 1; held_dir = 0; repeats = 0;
     ESP_LOGI(TAG, "neutral roll %.1f deg", neutral_roll);
     return true;
 }
@@ -168,6 +181,7 @@ void input_poll(void)
     if (dir == 0) {
         if (fabsf(roll) <= NAV_OFF_DEG) armed = 1;   /* back to centre: re-arm */
         held_dir = 0;
+        repeats  = 0;
         return;
     }
 
@@ -176,13 +190,22 @@ void input_poll(void)
         held_dir     = dir;
         held_since   = now;
         last_repeat  = now;
+        repeats      = 0;
         armed        = 0;
-    } else if (dir == held_dir) {                    /* held over: auto-repeat */
-        int64_t gap = (now - held_since >= NAV_REPEAT_FIRST_US)
-                        ? NAV_REPEAT_NEXT_US : NAV_REPEAT_FIRST_US;
+    } else if (dir == held_dir) {                    /* held over: auto-repeat, winding up */
+        int64_t gap;
+        if (now - held_since < NAV_REPEAT_FIRST_US) {
+            gap = NAV_REPEAT_FIRST_US;
+        } else if (repeats >= NAV_REPEAT_RAMP) {
+            gap = NAV_REPEAT_FAST_US;
+        } else {
+            int64_t span = NAV_REPEAT_SLOW_US - NAV_REPEAT_FAST_US;
+            gap = NAV_REPEAT_SLOW_US - span * repeats / NAV_REPEAT_RAMP;
+        }
         if (now - last_repeat >= gap) {
             pending_nav = (dir > 0) ? NAV_NEXT : NAV_PREV;
             last_repeat = now;
+            if (repeats < NAV_REPEAT_RAMP) repeats++;
         }
     }
 }

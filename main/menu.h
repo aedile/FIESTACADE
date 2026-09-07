@@ -3,6 +3,10 @@
 extern "C" {
 #endif
 
+/* The rows the hold bar occupies, for a partial repaint while it fills. */
+#define MENU_HOLD_BAR_Y0 206
+#define MENU_HOLD_BAR_Y1 216
+
 typedef enum {
     MENU_BROWSE = 0,     /* carousel, with the hold-to-pick progress bar */
     MENU_LAUNCHING,      /* the picked game's marquee while it boots */
@@ -14,6 +18,9 @@ void        menu_set_mode(menu_mode_t m);
 void        menu_nav(int delta);
 void        menu_select_rom(const char *rom);   /* open the carousel on this game */
 void        menu_render(void);
+/* Repaint only the screen rows in [y0, y1). Bands that do not intersect are neither drawn
+ * nor pushed, so animating something small does not wipe the whole panel. */
+void        menu_render_range(int y0, int y1);
 const char *menu_current_rom(void);
 const char *menu_current_title(void);
 void        menu_show_message(const char *line1, const char *line2);

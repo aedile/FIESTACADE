@@ -43,10 +43,27 @@
 > "Missile Command" is 238 of the 240 columns at double size, so a title that
 > would touch the edges now drops to single size. One of the fourteen does.
 >
+> **Felt on hardware, 7 September:** "I still see bands" and "the scrolling
+> needs to be gentler, requires too much precision."
+>
+> The bands were not the compositor. While the button was held, the main loop
+> repainted the *entire* screen — all seven bands, with the marquee re-read from
+> flash for three of them — twenty times a second, to animate a five-pixel
+> progress bar. SPI is already at the ST7789's 80 MHz ceiling, so the fix was to
+> stop repainting what had not changed: `menu_render_range()` skips bands that do
+> not intersect, and the bar animation now touches one band instead of seven.
+> `host/preview` checks a partial repaint lands pixel-for-pixel what a full one
+> would.
+>
+> The detent went from 18°/8° to 12°/6°, and the auto-repeat now winds up the
+> longer it is held — a flick still moves one game, leaning on it crosses all
+> fourteen in 1.6 s rather than 3.3 s. A fixed repeat rate is either too fast to
+> land on a game or too slow to cross the menu; there is no single rate that is
+> both, which is why it ramps.
+>
 > **Still open:**
 >
-> - The detent feel and the select hold have still never been *felt*. The layout
->   has been seen and is right.
+> - The retuned detent and the select hold have not been felt yet.
 > - Chain-booting a game from the menu has not been exercised on hardware.
 > - Pac-Man is disabled in `games.toml`. PELLETINO carries both it and Ms. Pac-Man
 >   but which one is a build-time choice, so the two would need two builds of one

@@ -115,6 +115,25 @@ int main(int argc, char **argv)
     memset(screen, 0, sizeof screen); menu_render();
     snprintf(path, sizeof path, "%s/menu_state_launching.ppm", outdir); write_ppm(path);
 
+    /*
+     * The partial repaint must land exactly what a full one would. Draw the screen with the
+     * bar empty, then repaint only the bar's rows with it part-filled, and compare against a
+     * full render of that same state.
+     */
+    menu_set_mode(MENU_BROWSE);
+    menu_select_rom(mqart_get(0)->rom);
+    hold_ms = 0;   memset(screen, 0, sizeof screen); menu_render();
+    hold_ms = 900; menu_render_range(MENU_HOLD_BAR_Y0, MENU_HOLD_BAR_Y1);
+    static uint16_t partial[GFX_H][GFX_W];
+    memcpy(partial, screen, sizeof screen);
+
+    memset(screen, 0, sizeof screen); menu_render();     /* full, same state */
+    int bad = 0;
+    for (int y = 0; y < GFX_H; y++)
+        for (int x = 0; x < GFX_W; x++)
+            if (partial[y][x] != screen[y][x]) bad++;
+    printf("partial repaint vs full: %s (%d pixels differ)\n", bad ? "MISMATCH" : "identical", bad);
+
     printf("wrote %d marquee screens plus 3 states to %s\n", n, outdir);
-    return 0;
+    return bad ? 2 : 0;
 }

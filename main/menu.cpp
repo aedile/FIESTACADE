@@ -132,7 +132,15 @@ static void draw_marquee_into(gfx_band_t *b, const mqart_entry_t *e, bool instal
     }
 }
 
-void menu_render(void)
+/*
+ * The hold bar is the only thing that animates, and it is five pixels tall. Repainting the
+ * whole screen for it - seven bands, and the marquee re-read from flash for three of them -
+ * is what made the panel visibly wipe in strips twenty times a second while the button was
+ * held. Redrawing just the rows that changed is one band and about two milliseconds.
+ */
+void menu_render(void) { menu_render_range(0, GFX_H); }
+
+void menu_render_range(int ry0, int ry1)
 {
     if (!s_band) return;
     const mqart_entry_t *e = mqart_get(s_sel);
@@ -147,6 +155,7 @@ void menu_render(void)
         band.px = s_band;
         band.y0 = y0;
         band.h  = (GFX_H - y0) < GFX_BAND_H ? (GFX_H - y0) : GFX_BAND_H;
+        if (y0 + band.h <= ry0 || y0 >= ry1) continue;      /* nothing here changed */
         gfx_clear(&band, C_BG);
 
         if (s_mode == MENU_MESSAGE) {

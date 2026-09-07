@@ -115,15 +115,21 @@ extern "C" void app_main(void)
             dirty = true;                      /* not installed: repaint */
         }
 
-        /* Animate the progress bar without repainting at full loop rate. */
+        /*
+         * Animate the progress bar without repainting at full loop rate, and without
+         * repainting anything but the rows it occupies - a full repaint here is what made the
+         * panel wipe in strips while the button was held.
+         */
         int64_t now = esp_timer_get_time();
+        bool bar_only = false;
         if (input_hold_ms() > 0 && now - last_hold_draw >= HOLD_REDRAW_MS * 1000) {
             last_hold_draw = now;
-            dirty = true;
+            if (!dirty) bar_only = true;
         }
-        if (input_hold_ms() == 0 && last_hold_draw) { last_hold_draw = 0; dirty = true; }
+        if (input_hold_ms() == 0 && last_hold_draw) { last_hold_draw = 0; if (!dirty) bar_only = true; }
 
-        if (dirty) { menu_render(); dirty = false; }
+        if (dirty)          { menu_render(); dirty = false; }
+        else if (bar_only)  { menu_render_range(MENU_HOLD_BAR_Y0, MENU_HOLD_BAR_Y1); }
         vTaskDelay(pdMS_TO_TICKS(16));
     }
 }

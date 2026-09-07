@@ -23,7 +23,8 @@ done
 
 BUILD=build_docker
 MANIFEST=build/manifest.json
-PROJECTS="${PROJECTS_DIR:-$HOME/Projects}"
+# the game repos live in games/, each its own git repo; override with PROJECTS_DIR
+PROJECTS="${PROJECTS_DIR:-$PWD/games}"
 
 [ -f "$MANIFEST" ]        || { echo "no $MANIFEST - run ./minimame build" >&2; exit 1; }
 [ -f "$BUILD/minimame.bin" ] || { echo "no launcher build - run ./minimame build" >&2; exit 1; }
