@@ -96,6 +96,24 @@ games.toml + roms/*.zip
 Both generators read the same manifest, so the menu can never disagree with the
 partition table about which games exist.
 
+## Where the games live
+
+Each game is its own project, and they sit in `games/`:
+
+```
+games/GIRDER/        Donkey Kong        games/SPINDLE/       Tempest
+games/PELLETINO/     Ms. Pac-Man        games/TOCCATA/       Gyruss
+games/VAUS/          Arkanoid           ...and so on
+```
+
+Every one is a separate git repository with its own GitHub remote, so `games/`
+is ignored by this repository rather than tracked as a pile of submodules. Clone
+or move them freely; `tools/flash_all.sh` looks in `games/` by default and takes
+`PROJECTS_DIR` if you keep them elsewhere.
+
+`games.toml` names the project directory for each ROM, and flashing builds the
+path from that plus the lowercased project name — `games/GIRDER/build_docker/girder.bin`.
+
 Flashing writes the launcher, the artwork blob, and each game binary to the slot
 labelled with its ROM name. Games you have not built yet leave their slot empty
 and show as `NOT INSTALLED` in the menu — flash them later without rebuilding
