@@ -44,12 +44,18 @@ printf '  %-22s %-10s %s\n' launcher 0x20000 "$BUILD/minimame.bin"
 printf '  %-22s %-10s %s\n' artwork "$mqart_off" lcd/marquees.bin
 
 missing=0
-while IFS=$'\t' read -r rom title project offset; do
+while IFS=$'\t' read -r rom title project binary offset; do
     [ -n "$rom" ] || continue
     bin=""
     if [ -n "$project" ] && [ "$project" != "null" ]; then
-        # a game repo builds to <PROJECT>/build_docker/<lowercase project>.bin
-        cand="$PROJECTS/$project/build_docker/$(echo "$project" | tr 'A-Z' 'a-z').bin"
+        # '-' means games.toml named no binary; an empty field would be swallowed by read
+        if [ -n "$binary" ] && [ "$binary" != "-" ]; then
+            # games.toml named the binary: one project can build more than one game
+            cand="$PROJECTS/$project/$binary"
+        else
+            # a game repo builds to <PROJECT>/build_docker/<lowercase project>.bin
+            cand="$PROJECTS/$project/build_docker/$(echo "$project" | tr 'A-Z' 'a-z').bin"
+        fi
         [ -f "$cand" ] && bin="$cand"
     fi
     if [ -n "$bin" ]; then
@@ -62,7 +68,7 @@ while IFS=$'\t' read -r rom title project offset; do
 done < <(python3 -c "
 import json
 for g in json.load(open('$MANIFEST'))['games']:
-    print('\t'.join([g['rom'], g['title'], str(g.get('project') or ''), hex(g['offset'])]))
+    print('\t'.join([g['rom'], g['title'], str(g.get('project') or ''), str(g.get('binary') or '-'), hex(g['offset'])]))
 ")
 
 ESPTOOL=$(command -v esptool.py || echo "python3 -m esptool")

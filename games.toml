@@ -27,10 +27,13 @@ default_slot_kb = 768   # for games whose size we have not measured yet
 # --- measured: every one of these has a working build, and the slot is its measured
 # --- binary size rounded up. Sizes as of 6 September 2026.
 
+# PELLETINO builds either Pac-Man or Ms. Pac-Man, chosen at build time, so it is
+# built twice into two directories and each game names its own binary here.
 [[game]]
 rom = "mspacman"
 title = "Ms. Pac-Man"
 project = "PELLETINO"
+binary = "build_mspacman/pelletino.bin"
 slot_kb = 1024
 
 [[game]]
@@ -113,16 +116,12 @@ slot_kb = 512
 
 # --- not in a build yet ------------------------------------------------------
 
-# PELLETINO carries both Pac-Man and Ms. Pac-Man, but which one it is is still a
-# build-time choice, so the two would need two builds of the same repo and the
-# flashing script expects one binary per project. Ms. Pac-Man is the one that
-# ships. Merging them into a single image that reads medalboot_rom() at boot is
-# the fix, and then this can come back on.
 [[game]]
 rom = "pacman"
 title = "Pac-Man"
 project = "PELLETINO"
-enabled = false
+binary = "build_pacman/pelletino.bin"
+slot_kb = 1024
 
 # Slow, and not working. Wired up the same way as the rest, but do not spend
 # time on it.

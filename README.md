@@ -116,6 +116,9 @@ or move them freely; `tools/flash_all.sh` looks in `games/` by default and takes
 
 `games.toml` names the project directory for each ROM, and flashing builds the
 path from that plus the lowercased project name — `games/GIRDER/build_docker/girder.bin`.
+A game can name its binary instead with `binary = "..."`, relative to the project:
+that is how PELLETINO, which chooses Pac-Man or Ms. Pac-Man at build time, supplies
+both from two build directories.
 
 Flashing writes the launcher, the artwork blob, and each game binary to the slot
 labelled with its ROM name. Games you have not built yet leave their slot empty

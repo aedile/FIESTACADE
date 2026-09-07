@@ -90,9 +90,28 @@
 > strips if the 134 KB DMA buffer is ever unavailable, and says which it got at
 > boot.
 >
+> **Fourth pass on the scroll, and this one was a real bug, not a tuning.** Jesse:
+> "fast scrolling engages a little too quickly and I couldn't get it to stop. It
+> stopped on its own when I put the medal down." The zero was being taken from
+> the *first sample that passed "held up"* - the instant the medal leaves the
+> desk, mid-lift, at whatever angle the hand happened to be - and every tilt for
+> the rest of the session was measured against that. "Back to centre" was a pose
+> nobody was holding, so the carousel could not be stopped until the medal was
+> put down. The zero is now taken only once the medal has been held still (roll
+> within 2.5° for half a second), and a short press of PWR discards it so the
+> next still moment sets a new one. The wind-up also eases in over eight repeats
+> to 230 ms rather than five to 170.
+>
+> **Pac-Man and Ms. Pac-Man are both on the medal**, as separate games. PELLETINO
+> still chooses at build time, so it is built twice (`build_pacman/`,
+> `build_mspacman/`) and each entry in `games.toml` names its binary with the new
+> optional `binary` key, which `flash_all.sh` prefers over the default path. That
+> is fifteen of sixteen slots. Merging the two into one image behind
+> `medalboot_rom()` would free one; not done.
+>
 > **Still open:**
 >
-> - The detent has been retuned twice against feel. It is now 12 degrees out, 6
+> - The still-pose zero and the eased wind-up have not been felt yet. It is now 12 degrees out, 6
 >   back, a one-second dwell before the auto-repeat starts, and a wind-up to 170
 >   ms rather than 65. Not felt yet.
 > - Chain-booting a game from the menu has not been exercised on hardware.

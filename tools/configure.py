@@ -67,6 +67,7 @@ def resolve(cfg):
             die(f'{rom} is in the build but marquees/{rom}.png is missing')
 
         rec = dict(rom=rom, title=g.get('title', rom), project=g.get('project'),
+                   binary=g.get('binary'),          # optional: where this game's .bin is, under the project
                    slot_kb=g.get('slot_kb', default_slot), why=why, has_art=has_art)
         (rows if on else skipped).append(rec)
 
@@ -157,7 +158,7 @@ def main():
 
     os.makedirs(os.path.dirname(MANIF), exist_ok=True)
     with open(MANIF, 'w') as f:
-        json.dump({'games': [{k: r[k] for k in ('rom', 'title', 'project', 'slot_kb', 'offset')}
+        json.dump({'games': [{k: r[k] for k in ('rom', 'title', 'project', 'binary', 'slot_kb', 'offset')}
                              for r in rows],
                    'mqart_kb': art_kb, 'flash_mb': b.get('flash_mb', 16)}, f, indent=2)
 

@@ -41,12 +41,26 @@ static const char *TAG = "input";
 #define NAV_ON_DEG          12.0f        /* cross this to step */
 #define NAV_OFF_DEG          6.0f        /* fall back inside this to re-arm */
 #define NAV_REPEAT_FIRST_US 1000000      /* a full second on the new game before it moves on */
-#define NAV_REPEAT_SLOW_US   360000      /* the first repeats, one at a time and readable */
-#define NAV_REPEAT_FAST_US   170000      /* what it winds up to - fast, but you can still see it */
-#define NAV_REPEAT_RAMP           5      /* repeats taken to get there */
+#define NAV_REPEAT_SLOW_US   420000      /* the first repeats, one at a time and readable */
+#define NAV_REPEAT_FAST_US   230000      /* what it winds up to - quick, never a blur */
+#define NAV_REPEAT_RAMP           8      /* repeats taken to get there: it eases in, not lurches */
+
+/*
+ * The zero. It used to be taken from the first sample that passed "held up" - which is the
+ * instant the medal leaves the desk, mid-lift, at whatever angle the hand happened to be. Every
+ * tilt for the rest of the session was measured against that. The symptom was a carousel that
+ * would not stop scrolling until the medal was put down, because "back to centre" was a pose
+ * nobody was holding. So now the zero is only taken once the medal has been held still - roll
+ * within STILL_DEG for STILL_US - which is a pose someone is actually in. A short press of PWR
+ * throws the zero away and the next still moment sets a new one.
+ */
+#define STILL_DEG   2.5f
+#define STILL_US    500000
 
 static bool    imu_ok, have_neutral;
 static float   neutral_roll;
+static float   still_ref;                /* roll the stillness window is measured from */
+static int64_t still_since;              /* and when that window started */
 static int64_t imu_last_us;
 
 static int     armed = 1;                /* may a step fire? */
@@ -86,17 +100,26 @@ static float wrap_deg(float d)
     return d;
 }
 
-/* Returns false if the medal is not being held up; nothing is captured and the next poll
- * tries again. */
-static bool capture_neutral(void)
+/* True once `roll` has stayed within STILL_DEG of itself for STILL_US. */
+static bool held_still(float roll, int64_t now)
 {
-    float roll;
-    if (!imu_ok || !read_roll(&roll)) return false;
+    if (fabsf(wrap_deg(roll - still_ref)) > STILL_DEG) { still_ref = roll; still_since = now; return false; }
+    return now - still_since >= STILL_US;
+}
+
+static void set_neutral(float roll)
+{
     neutral_roll = roll;
     have_neutral = true;
     armed = 1; held_dir = 0; repeats = 0;
     ESP_LOGI(TAG, "neutral roll %.1f deg", neutral_roll);
-    return true;
+}
+
+/* Forget the zero; the next still moment sets a new one. */
+static void clear_neutral(void)
+{
+    have_neutral = false;
+    still_since = esp_timer_get_time();
 }
 
 void input_init(void)
@@ -127,9 +150,7 @@ void input_init(void)
 
     imu_ok = qmi8658_init();
     if (imu_ok) {
-        vTaskDelay(pdMS_TO_TICKS(120));   /* let it settle before levelling */
-        /* this will refuse while the medal is still lying down; input_poll keeps trying */
-        capture_neutral();
+        clear_neutral();                  /* the zero comes from the first still moment held up */
     } else {
         ESP_LOGW(TAG, "no IMU - browse with the BOOT button only");
     }
@@ -164,7 +185,7 @@ void input_poll(void)
         gpio_set_level(PIN_BAT_EN, 0);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    if (!pwr && pwr_was_down && now - pwr_down_since < 400000) capture_neutral();
+    if (!pwr && pwr_was_down && now - pwr_down_since < 400000) clear_neutral();   /* re-level: hold it steady */
     pwr_was_down = pwr;
 
     if (!imu_ok || now - imu_last_us < IMU_PERIOD_US) return;
@@ -172,8 +193,11 @@ void input_poll(void)
 
     float raw;
     /* nothing is captured or acted on until the medal is actually being held up */
-    if (!read_roll(&raw)) return;
-    if (!have_neutral && !capture_neutral()) return;
+    if (!read_roll(&raw)) { still_since = now; still_ref = raw; return; }
+    if (!have_neutral) {
+        if (held_still(raw, now)) set_neutral(raw);
+        return;
+    }
 
     float roll = wrap_deg(raw - neutral_roll);
     int dir = (roll >= NAV_ON_DEG) ? +1 : (roll <= -NAV_ON_DEG) ? -1 : 0;
