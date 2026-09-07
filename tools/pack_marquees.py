@@ -45,7 +45,9 @@ def main():
     if not games:
         sys.exit('no games in this build - put an approved ROM zip in roms/')
     titles = dict(games)
-    roms = sorted(titles)
+    # the carousel runs in this order: by title, not by ROM name - 'sf2' sorts before
+    # 'starwars' but Street Fighter II comes after Star Wars
+    roms = sorted(titles, key=lambda r: titles[r].lower())
 
     hdr_sz   = 8 + ENTRY.size * len(roms)
     data_off = (hdr_sz + 3) & ~3

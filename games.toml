@@ -53,6 +53,7 @@ rom = "arkanoidu"
 title = "Arkanoid"
 project = "VAUS"
 slot_kb = 768
+enabled = false      # cut for the full Street Fighter clip
 
 [[game]]
 rom = "gyruss"
@@ -95,6 +96,7 @@ rom = "rallyx"
 title = "Rally-X"
 project = "SMOKESCREEN"
 slot_kb = 512
+enabled = false      # cut for the full Street Fighter clip
 
 [[game]]
 rom = "tempest"
@@ -122,7 +124,7 @@ rom = "sf2"
 title = "Street Fighter II"
 project = "HADOUKEN"
 slot_kb = 512
-data_kb = 4352
+data_kb = 5504
 data_file = "media.bin"
 
 # --- not in a build yet ------------------------------------------------------
