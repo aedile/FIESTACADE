@@ -1,8 +1,10 @@
 /*
  * input.cpp - menu controls for the MINIMAME launcher.
- *   tilt (QMI8658)      -> browse left/right, one game per detent
- *   BOOT button (GPIO9) -> HOLD to pick the highlighted game (see INPUT_SELECT_HOLD_MS)
- *   PWR button (GPIO18) -> short: re-level the neutral pose; long (1 s): power off
+ *   BOOT button (GPIO9)  -> short press: next game; HOLD to pick it (INPUT_SELECT_HOLD_MS)
+ *   PWR button (GPIO18)  -> short press: previous game; long (1 s): power off
+ *   tilt (QMI8658)       -> off for now. Four passes of tuning never made it feel right in
+ *                           the hand, so the buttons drive the carousel until it does; the
+ *                           detent code is kept below, behind NAV_TILT.
  *
  * The detent is the important part. Raw tilt would rip through the whole carousel in half a
  * second, so a step only fires when roll crosses NAV_ON_DEG, and no further step can fire
@@ -38,6 +40,8 @@ static const char *TAG = "input";
  * the wind-up a fixed repeat is either too fast to land on a game or too slow to cross the
  * menu, and there is no rate that is both.
  */
+#define NAV_TILT            0            /* 1 to browse by tilt again */
+#define NAV_SHORT_PRESS_US  400000       /* a press shorter than this is a step */
 #define NAV_ON_DEG          12.0f        /* cross this to step */
 #define NAV_OFF_DEG          6.0f        /* fall back inside this to re-arm */
 #define NAV_REPEAT_FIRST_US 1000000      /* a full second on the new game before it moves on */
@@ -172,6 +176,9 @@ void input_poll(void)
     if (!boot) boot_seen_up = true;
     if (!boot_seen_up) { hold_ms = 0; boot_was_down = boot; return; }
     if (boot && !boot_was_down) { boot_down_since = now; hold_consumed = false; }
+    /* a short press, released before it could be a hold, steps forward */
+    if (!boot && boot_was_down && !hold_consumed && now - boot_down_since < NAV_SHORT_PRESS_US)
+        pending_nav = NAV_NEXT;
     if (boot) {
         hold_ms = (int)((now - boot_down_since) / 1000);
         if (!hold_consumed && hold_ms >= INPUT_SELECT_HOLD_MS) {
@@ -190,10 +197,10 @@ void input_poll(void)
         gpio_set_level(PIN_BAT_EN, 0);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    if (!pwr && pwr_was_down && now - pwr_down_since < 400000) clear_neutral();   /* re-level: hold it steady */
+    if (!pwr && pwr_was_down && now - pwr_down_since < NAV_SHORT_PRESS_US) pending_nav = NAV_PREV;
     pwr_was_down = pwr;
 
-    if (!imu_ok || now - imu_last_us < IMU_PERIOD_US) return;
+    if (!NAV_TILT || !imu_ok || now - imu_last_us < IMU_PERIOD_US) return;
     imu_last_us = now;
 
     float raw;

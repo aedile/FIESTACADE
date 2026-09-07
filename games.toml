@@ -114,6 +114,17 @@ title = "Missile Command"
 project = "SILO"
 slot_kb = 512
 
+# Not an emulator: a video clip. Street Fighter II's attract mode, letterboxed on the
+# portrait panel and looped. The clip lives in a data partition of its own, sized here;
+# the player is 336 KB. Pack a clip with games/HADOUKEN/tools/pack_media.py.
+[[game]]
+rom = "sf2"
+title = "Street Fighter II"
+project = "HADOUKEN"
+slot_kb = 512
+data_kb = 4352
+data_file = "media.bin"
+
 # --- not in a build yet ------------------------------------------------------
 
 [[game]]

@@ -18,6 +18,7 @@ ROOT   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONF   = os.path.join(ROOT, 'games.toml')
 ROMS   = os.path.join(ROOT, 'roms')
 ART    = os.path.join(ROOT, 'marquees')
+GAMES  = os.path.join(ROOT, 'games')
 BLOB   = os.path.join(ROOT, 'lcd', 'marquees.bin')
 PARTS  = os.path.join(ROOT, 'partitions.csv')
 MANIF  = os.path.join(ROOT, 'build', 'manifest.json')
@@ -55,19 +56,29 @@ def resolve(cfg):
         art_p = os.path.join(ART,  rom + '.png')
         has_rom, has_art = os.path.exists(zip_p), os.path.exists(art_p)
 
+        # A game whose payload is a data file rather than a ROM - a video clip - is switched
+        # on by that file existing under its project, the same way a ROM zip switches on an
+        # emulated game: put the file there and it is in the build.
+        data_file = g.get('data_file')
+        data_p = os.path.join(GAMES, g.get('project') or '', data_file) if data_file else None
+        has_payload = os.path.exists(data_p) if data_p else has_rom
+        payload_desc = (f"{g.get('project')}/{data_file}" if data_p else f'roms/{rom}.zip')
+
         forced = g.get('enabled')
-        on = has_rom if forced is None else bool(forced)
+        on = has_payload if forced is None else bool(forced)
         why = ('forced on' if forced is True else
                'disabled in games.toml' if forced is False else
-               'roms/%s.zip' % rom if has_rom else 'no ROM')
+               payload_desc if has_payload else ('no ROM' if not data_p else f'no {data_file}'))
 
-        if forced is True and not has_rom:
-            die(f'{rom} is forced on in games.toml but roms/{rom}.zip is missing')
+        if forced is True and not has_payload:
+            die(f'{rom} is forced on in games.toml but {payload_desc} is missing')
         if on and not has_art:
             die(f'{rom} is in the build but marquees/{rom}.png is missing')
 
         rec = dict(rom=rom, title=g.get('title', rom), project=g.get('project'),
                    binary=g.get('binary'),          # optional: where this game's .bin is, under the project
+                   data_kb=g.get('data_kb', 0),     # optional: a data partition of its own, e.g. a video clip
+                   data_file=g.get('data_file'),    # optional: the file to flash into it, under the project
                    slot_kb=g.get('slot_kb', default_slot), why=why, has_art=has_art)
         (rows if on else skipped).append(rec)
 
@@ -96,6 +107,18 @@ def build_table(b, rows, art_kb):
         parts.append((r['rom'], 'app', f'ota_{i}', off, r['slot_kb'] * K))
         r['offset'] = off
         off += r['slot_kb'] * K
+
+    # A game may ask for a data partition of its own - a video clip, say. It is laid out
+    # after the app slots and labelled "media", which is the label the player looks for,
+    # so only one game in a build may have one.
+    data_games = [r for r in rows if r.get('data_kb')]
+    if len(data_games) > 1:
+        die('only one game per build may have data_kb: ' + ', '.join(r['rom'] for r in data_games))
+    for r in data_games:
+        off = (off + ALIGN - 1) & ~(ALIGN - 1)
+        parts.append(('media', 'data', '0x40', off, r['data_kb'] * K))
+        r['data_offset'] = off
+        off += r['data_kb'] * K
     return parts, off
 
 def main():
@@ -158,7 +181,7 @@ def main():
 
     os.makedirs(os.path.dirname(MANIF), exist_ok=True)
     with open(MANIF, 'w') as f:
-        json.dump({'games': [{k: r[k] for k in ('rom', 'title', 'project', 'binary', 'slot_kb', 'offset')}
+        json.dump({'games': [{k: r.get(k) for k in ('rom', 'title', 'project', 'binary', 'slot_kb', 'offset', 'data_kb', 'data_file', 'data_offset')}
                              for r in rows],
                    'mqart_kb': art_kb, 'flash_mb': b.get('flash_mb', 16)}, f, indent=2)
 

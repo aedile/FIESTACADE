@@ -44,7 +44,7 @@ printf '  %-22s %-10s %s\n' launcher 0x20000 "$BUILD/minimame.bin"
 printf '  %-22s %-10s %s\n' artwork "$mqart_off" lcd/marquees.bin
 
 missing=0
-while IFS=$'\t' read -r rom title project binary offset; do
+while IFS=$'\t' read -r rom title project binary offset data_file data_offset; do
     [ -n "$rom" ] || continue
     bin=""
     if [ -n "$project" ] && [ "$project" != "null" ]; then
@@ -61,6 +61,13 @@ while IFS=$'\t' read -r rom title project binary offset; do
     if [ -n "$bin" ]; then
         printf '  %-22s %-10s %s\n' "$title" "$offset" "${bin#$PROJECTS/}"
         ARGS+=("$offset" "$bin")
+        # the game's own data partition, if games.toml gave it one
+        if [ "$data_file" != "-" ] && [ -f "$PROJECTS/$project/$data_file" ]; then
+            printf '  %-22s %-10s %s\n' "  $title data" "$data_offset" "$project/$data_file"
+            ARGS+=("$data_offset" "$PROJECTS/$project/$data_file")
+        elif [ "$data_file" != "-" ]; then
+            printf '  %-22s %-10s %s(%s missing - partition left empty)%s\n' "  $title data" "$data_offset" $'\033[2m' "$data_file" $'\033[0m'
+        fi
     else
         printf '  %-22s %-10s %s(not built - slot left empty)%s\n' "$title" "$offset" $'\033[2m' $'\033[0m'
         missing=$((missing+1))
@@ -68,7 +75,8 @@ while IFS=$'\t' read -r rom title project binary offset; do
 done < <(python3 -c "
 import json
 for g in json.load(open('$MANIFEST'))['games']:
-    print('\t'.join([g['rom'], g['title'], str(g.get('project') or ''), str(g.get('binary') or '-'), hex(g['offset'])]))
+    print('\t'.join([g['rom'], g['title'], str(g.get('project') or ''), str(g.get('binary') or '-'), hex(g['offset']),
+                     str(g.get('data_file') or '-'), hex(g.get('data_offset') or 0)]))
 ")
 
 ESPTOOL=$(command -v esptool.py || echo "python3 -m esptool")

@@ -122,9 +122,22 @@
 > managed to save; and a button already down at boot is not a press until it has
 > been released, so the tail of an exit hold cannot start a select hold.
 >
+> **Tilt browsing is parked.** Four passes never made it feel right in the hand, so
+> the carousel is on buttons for now: short BOOT = next, short PWR = previous,
+> holds unchanged. The detent code stays behind `NAV_TILT` in `main/input.cpp`.
+>
+> **Street Fighter II is on the medal as a video**, not an emulator - CPS-1 is a
+> 10 MHz 68000 and five megabytes of graphics, far beyond this board. The player
+> is Star Wars' old easter egg lifted into `games/HADOUKEN`. `games.toml` gained
+> `data_kb` / `data_file`: a game may own one `media` data partition, laid out
+> after the app slots and flashed by `flash_all.sh`; the data file existing under
+> the project is what puts the game in the build, as a ROM zip does. Sixteen of
+> sixteen slots are used and 15.69 of 16 MB; the clip is 55 s at 12 fps. The full
+> 74 s at 15 fps would need about 2 MB more - two or three games' worth.
+>
 > **Still open:**
 >
-> - The still-pose zero and the eased wind-up have not been felt yet. It is now 12 degrees out, 6
+> - The button carousel has not been used yet. It is now 12 degrees out, 6
 >   back, a one-second dwell before the auto-repeat starts, and a wind-up to 170
 >   ms rather than 65. Not felt yet.
 > - Chain-booting a game from the menu has not been exercised on hardware.
