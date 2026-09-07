@@ -135,8 +135,23 @@
 > sixteen slots are used and 15.69 of 16 MB; the clip is 55 s at 12 fps. The full
 > 74 s at 15 fps would need about 2 MB more - two or three games' worth.
 >
+> **Star Wars flies itself.** Its attract is eighty-five seconds of text; after
+> one untouched run of it (100 s) the medal starts a game and plays. The
+> autopilot (`games/TRENCHRUNNER/core/autoplay.c`) aims from the vector list the
+> emulator already generates - a TIE fighter is exactly 94 green segments, the
+> crosshair 16 cyan, fireballs red clusters mid-screen - and drives the yoke
+> closed-loop on where the crosshair actually is, since it drifts. A button or a
+> real lean takes over at once. On the host it fights the TIE wave, flies the
+> trench, misses the exhaust port and dies at ~85 s with 6000 points, then
+> re-arms after the next attract run. The harness gained `--autoplay N`,
+> `--dsw0`, and `--dump T,...` for raw vector lists, and a fix for scripted
+> coin/fire being clobbered.
+>
 > **Still open:**
 >
+> - The autopilot has not been watched on the medal. Two things to expect: it
+>   does not shoot a death star on the select screen (waits out the countdown),
+>   and it misses the exhaust port. Both are tunable in `autoplay.c`.
 > - The button carousel has not been used yet. It is now 12 degrees out, 6
 >   back, a one-second dwell before the auto-repeat starts, and a wind-up to 170
 >   ms rather than 65. Not felt yet.
