@@ -16,10 +16,17 @@
 > (`BIGTOP`). Every one is in `games.toml` with a measured slot size and a row
 > in `README.md`'s control table.
 >
-> **The medal now carries the test build Jesse asked for** (morning of 9
-> September): the seven new games plus Street Fighter II and Pac-Man / Ms.
-> Pac-Man, filled out with Pole Position, Star Wars, Gyruss, Galaga, Dig Dug
-> and Donkey Kong - 15 of 16 slots, 15.81 of 16 MB, nothing else fits.
+> **The medal now carries the FINAL lineup Jesse chose** (9 September): 16 OTA
+> slots / 17 carousel games, with the Street Fighter II video (its 5.5 MB clip
+> is what makes the flash the binding limit). Games: Ms. Pac-Man (+ Pac-Man on
+> the same slot), Street Fighter II, Mario Bros, Mr. Do!, Time Pilot, Burger
+> Time, Root Beer Tapper, Joust, Moon Patrol, Pole Position, Star Wars, Galaga,
+> Dig Dug, Donkey Kong, Asteroids, Missile Command. **Gyruss dropped** at
+> Jesse's call (compute-bound, judders). Built and flashed (22 writes verified),
+> booted clean to "17 games in the carousel". 15.69 of 16 MB, 0.31 free -
+> nothing else fits with the video in. `selection.txt` holds this lineup.
+> Left off for room, all with working ports and banners ready: Frogger,
+> Rally-X, Centipede, Lunar Lander, Galaxian, Space Invaders.
 > `selection.txt` (gitignored) holds that list; `./fiestacade pick` changes
 > it, and any change to the list shifts every slot and needs a full reflash.
 > Off the medal for now: Centipede, Frogger, Tempest, Asteroids, Missile
