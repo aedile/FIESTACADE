@@ -18,7 +18,7 @@
 #include <stdlib.h>
 
 static const char *TAG = "RENDER";
-#define ROWS_PER_CHUNK 14
+#define ROWS_PER_CHUNK 28
 #define NUM_FB 2
 #define PIC_W DISPLAY_WIDTH                        /* 240 */
 #define PIC_H (TAP_FB_H * DISPLAY_WIDTH / TAP_FB_W)  /* 225 */
@@ -26,7 +26,6 @@ static const char *TAG = "RENDER";
 
 static uint8_t *fbs[NUM_FB];
 static QueueHandle_t free_q, frame_q;
-static uint16_t *chunk;
 static uint16_t pal_swapped[TAP_PALETTE_SIZE];
 static uint16_t x_map[DISPLAY_WIDTH];             /* panel column -> native column */
 static uint16_t y_map[DISPLAY_HEIGHT];            /* panel row    -> native row, or 0xffff for a bar */
@@ -41,14 +40,18 @@ static void present(const uint8_t *fb)
     display_set_window(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
     for (int row = 0; row < DISPLAY_HEIGHT; row += ROWS_PER_CHUNK) {
         int rows = (row + ROWS_PER_CHUNK <= DISPLAY_HEIGHT) ? ROWS_PER_CHUNK : (DISPLAY_HEIGHT - row);
-        uint16_t *dst = chunk;
+        uint16_t *dst = display_acquire_buffer();
         for (int r = 0; r < rows; r++) {
             uint16_t ny = y_map[row + r];
             if (ny == 0xffff) { memset(dst, 0, DISPLAY_WIDTH * sizeof(uint16_t)); dst += DISPLAY_WIDTH; continue; }
             const uint8_t *src = fb + ny * TAP_FB_W;
-            for (int px = 0; px < DISPLAY_WIDTH; px++) *dst++ = pal_swapped[src[x_map[px]]];
+            const uint16_t *xm = x_map;
+            for (int px = 0; px < DISPLAY_WIDTH; px += 4, xm += 4, dst += 4) {
+                dst[0] = pal_swapped[src[xm[0]]]; dst[1] = pal_swapped[src[xm[1]]];
+                dst[2] = pal_swapped[src[xm[2]]]; dst[3] = pal_swapped[src[xm[3]]];
+            }
         }
-        display_write_preswapped(chunk, rows * DISPLAY_WIDTH);
+        display_submit_buffer(rows * DISPLAY_WIDTH);
     }
     display_wait_done();
 }
@@ -74,7 +77,6 @@ void render_init(void)
         int p = i - TOP_BAR;
         y_map[i] = (p < 0 || p >= PIC_H) ? 0xffff : (uint16_t)(p * TAP_FB_H / PIC_H);
     }
-    chunk = (uint16_t *)heap_caps_malloc(ROWS_PER_CHUNK * DISPLAY_WIDTH * sizeof(uint16_t), MALLOC_CAP_8BIT);
     free_q = xQueueCreate(NUM_FB, sizeof(uint8_t *));
     frame_q = xQueueCreate(NUM_FB, sizeof(uint8_t *));
     for (int i = 0; i < NUM_FB; i++) {
@@ -82,7 +84,6 @@ void render_init(void)
         if (!fbs[i]) { ESP_LOGE(TAG, "frame buffer allocation failed"); abort(); }
         xQueueSend(free_q, &fbs[i], 0);
     }
-    if (!chunk) { ESP_LOGE(TAG, "chunk allocation failed"); abort(); }
     xTaskCreate(render_task, "render", 4096, nullptr, 6, nullptr);
     ESP_LOGI(TAG, "render task started (%dx%d native, %dx%d picture, %d-row bars)", TAP_FB_W, TAP_FB_H, PIC_W, PIC_H, TOP_BAR);
 }

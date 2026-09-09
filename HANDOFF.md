@@ -36,12 +36,13 @@
 > **Space Invaders** is twist to move, as Galaxian is, with the same
 > thresholds; "tilt" in the earlier report was a misreading of the control.
 >
-> **Frame-loop lessons, applied to Moon Patrol and Mario Bros:** the render
-> task's palette conversion costs about 5 ms a frame and preempts the main
-> loop; an IMU read is about 1.8 ms; a one-tick sleep under tickless idle
+> **Frame-loop lessons, applied to Moon Patrol, Mario Bros and Tapper:** the
+> render task's palette conversion costs about 5 ms a frame and preempts the
+> main loop; an IMU read is about 1.8 ms; a one-tick sleep under tickless idle
 > stretches. Converting straight into 28-row DMA buffers, sleeping only when no
 > frame is due, and polling the IMU every 33 ms took Mario Bros from one frame
-> in six skipped to none. The other games did not need it.
+> in six skipped to none and Tapper from one in twenty to none. The other games
+> were already drawing every frame.
 >
 > **Not ported, and why:** Elevator Action needs two Z80s at 4 and 3 MHz, a
 > 68705, four AYs and a three-layer video with sprite collision - about 130% of
