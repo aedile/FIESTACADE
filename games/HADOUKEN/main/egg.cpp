@@ -217,6 +217,7 @@ static void player_task(void *arg)
     const int64_t frame_us = (int64_t)1000000 * c->fps_den / c->fps_num;
     uint32_t shown = 0, skipped = 0;
     int boot_released = 0;
+    int64_t video_end = 0;
 
     /* prime the audio so the first frames have sound, then start the clock */
     for (int k = 0; k < 4 && !P.mp3_done; k++) mp3_step();
@@ -236,9 +237,18 @@ static void player_task(void *arg)
             if (now < target - 3000) { vTaskDelay(1); continue; }
             if (show_frame(i) != 0) { P.result = -1; break; }
             shown++; i++;
+            if (i == c->nframes) video_end = esp_timer_get_time();
             continue;
         }
-        if (P.mp3_done && audio_stream_queued() == 0) break;      /* video over, audio drained */
+        /*
+         * Video over: wait for the audio to drain, but not for ever. With the sound muted (or
+         * the codec powered down as silent) audio_update() stops consuming the ring, so the
+         * ring never empties, the decoder never reaches the end of the MP3, and the clip used
+         * to freeze on its last frame instead of looping. The tail of the audio is a moment
+         * long at most, so give it that and move on.
+         */
+        if (P.mp3_done && audio_stream_queued() == 0) break;      /* audio drained */
+        if (esp_timer_get_time() - video_end > 1500000) break;     /* or it is never going to */
         vTaskDelay(1);
     }
     int64_t ms = (esp_timer_get_time() - t0) / 1000;
