@@ -73,6 +73,18 @@
 > the launcher drop the sticky selection (three boots without reaching
 > `medalboot_game_running()`), so the selection was written again.
 >
+> **Marquee art filled in** (morning of 9 September): the ten games that had
+> no banner - Mario Bros, Mr. Do!, Time Pilot, Burger Time, Root Beer Tapper,
+> Joust, Moon Patrol, Lunar Lander, Galaxian, Space Invaders - now have real
+> illustrated marquees in `marquees/`, pulled from the same archive the
+> existing banners came from (arcadeforge/regamebox_marquees_arcade; the repo's
+> frogger is byte-identical to the bundled one). The shipped `fetch_marquees.py`
+> had been pointing at libretro title screenshots instead; that is fixed
+> (10cff47). The build now generates zero text placeholders. Art and the packed
+> blob are git-ignored, so this is not committed and not on the medal yet - it
+> lands at the next `./fiestacade build && flash`, your call while you are
+> playing.
+>
 > **Seen in passing, not touched:** Gyruss draws only about half its frames
 > (160 of 300 per five seconds, 131-181 skipped) - the same frame-loop
 > condition fixed tonight in Moon Patrol, Mario Bros, Tapper and Joust, and
