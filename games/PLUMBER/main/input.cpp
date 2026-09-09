@@ -42,6 +42,7 @@ void input_init(void)
     cfg.init_i2c = true;
     cfg.imu_init = qmi8658_init;
     cfg.read_accel = qmi8658_read_accel;
+    cfg.imu_period_us = 33000;        /* a twist threshold does not need the IMU every frame, and a read costs 2 ms */
     cfg.coin_us = 80000;              /* the game rejects a coin switch held past about 150 ms as stuck */
     cfg.mute_hold_us = 3000000;
     cfg.on_mute = on_mute;

@@ -19,7 +19,7 @@ static int current_buffer = 0;
 static spi_transaction_t trans[2]; // Transaction descriptors
 static bool trans_pending = false;
 static constexpr size_t DMA_BUFFER_SIZE =
-    GAME_WIDTH * 16 * 2; // 16 rows for video (was 8)
+    DISPLAY_WIDTH * 28 * 2; // 28 full-width rows: ten transfers a frame
 
 // ST7789 Commands
 #define ST7789_NOP 0x00
@@ -239,6 +239,32 @@ void display_write_preswapped(const uint16_t *data, uint32_t len) {
   spi_device_queue_trans(spi_handle, &trans[current_buffer], portMAX_DELAY);
   trans_pending = true;
 
+  current_buffer = 1 - current_buffer;
+}
+
+/*
+ * Fill a DMA buffer in place instead of copying into one: acquire hands out the buffer the
+ * last transfer is not using, submit waits for that transfer and queues this one.
+ */
+uint16_t *display_acquire_buffer(void) { return (uint16_t *)dma_buffer[current_buffer]; }
+
+void display_submit_buffer(uint32_t len) {
+  size_t bytes = len * 2;
+  if (bytes > DMA_BUFFER_SIZE) {
+    bytes = DMA_BUFFER_SIZE;
+  }
+  if (trans_pending) {
+    spi_transaction_t *rtrans;
+    spi_device_get_trans_result(spi_handle, &rtrans, portMAX_DELAY);
+    trans_pending = false;
+  }
+  trans[current_buffer].length = bytes * 8;
+  trans[current_buffer].rxlength = 0;
+  trans[current_buffer].tx_buffer = dma_buffer[current_buffer];
+  trans[current_buffer].rx_buffer = nullptr;
+  trans[current_buffer].user = (void *)1;
+  spi_device_queue_trans(spi_handle, &trans[current_buffer], portMAX_DELAY);
+  trans_pending = true;
   current_buffer = 1 - current_buffer;
 }
 
