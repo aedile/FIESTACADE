@@ -40,11 +40,14 @@ static bool button_held_at_boot(void)
 
 static void launch(const char *rom)
 {
+    /* A shared slot (Pac-Man riding Ms. Pac-Man's image) records its own ROM as the
+     * selection - so the image knows which variant to run - but chain-boots the slot
+     * owner's partition. For every other game the boot label is the ROM itself. */
     menu_select_rom(rom);
     menu_set_mode(MENU_LAUNCHING);
     menu_render();
     medalboot_note_attempt();
-    game_launch(rom);            /* does not return */
+    game_launch(mqart_boot_label(rom));   /* does not return */
 }
 
 extern "C" void app_main(void)
@@ -87,7 +90,7 @@ extern "C" void app_main(void)
         /* Wait for release so the same press does not immediately pick a game. */
         while (input_button_down()) vTaskDelay(pdMS_TO_TICKS(20));
     } else if (medalboot_get_selected(sel, sizeof sel)) {
-        if (!game_installed(sel)) {
+        if (!game_installed(mqart_boot_label(sel))) {
             ESP_LOGW(TAG, "%s is selected but not installed", sel);
             medalboot_clear_selected();
         } else if (medalboot_attempts() >= MEDALBOOT_MAX_ATTEMPTS) {
@@ -121,7 +124,7 @@ extern "C" void app_main(void)
 
         if (input_take_hold()) {
             const char *rom = menu_current_rom();
-            if (rom && game_installed(rom)) {
+            if (rom && game_installed(mqart_boot_label(rom))) {
                 medalboot_set_selected(rom);   /* sticky from now on */
                 launch(rom);                   /* does not return */
             }

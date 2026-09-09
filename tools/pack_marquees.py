@@ -9,8 +9,13 @@ aspect ratio preserved, then written as RGB565 in BIG-ENDIAN byte order so the
 firmware can hand it straight to display_write_preswapped() with no per-pixel swap.
 
 Blob layout:
-    "MQ02" | u16 count | u16 entry_size | entry[count] | pixels (4-byte aligned)
-    entry  = 12s rom | 24s title | u16 w | u16 h | u32 offset | u32 length
+    "MQ03" | u16 count | u16 entry_size | entry[count] | pixels (4-byte aligned)
+    entry  = 12s rom | 12s boot | 24s title | u16 w | u16 h | u32 offset | u32 length
+
+The boot label is the partition the launcher chain-boots for this entry; it equals
+the ROM name except for a shared slot (Pac-Man rides Ms. Pac-Man's image), where it
+is the slot owner's label. The ROM name is still what the launcher records as the
+selection, so the shared image knows which variant to run.
 """
 import os, struct, sys
 from PIL import Image
@@ -21,14 +26,14 @@ SRC   = os.path.join(ROOT, 'marquees')
 PREV  = os.path.join(ROOT, 'lcd', 'preview')
 OUT   = os.path.join(ROOT, 'lcd', 'marquees.bin')
 BOX_W, BOX_H = 208, 104
-ENTRY = struct.Struct('<12s24sHHII')
+ENTRY = struct.Struct('<12s12s24sHHII')
 
 def enabled_games():
     """The games in this build, straight from games.toml + roms/ - so the menu can
     never disagree with the partition table about what exists."""
     cfg = configure.load()
     _, rows, _ = configure.resolve(cfg)
-    return [(r['rom'], r['title']) for r in rows]
+    return [(r['rom'], r['title'], r['boot']) for r in rows]
 
 
 def rgb565_be(r, g, b):
@@ -44,7 +49,8 @@ def main():
     games = enabled_games()
     if not games:
         sys.exit('no games in this build - put an approved ROM zip in roms/')
-    titles = dict(games)
+    titles = {rom: title for rom, title, _ in games}
+    boots  = {rom: boot  for rom, _, boot in games}
     # the carousel runs in this order: by title, not by ROM name - 'sf2' sorts before
     # 'starwars' but Street Fighter II comes after Star Wars
     roms = sorted(titles, key=lambda r: titles[r].lower())
@@ -64,13 +70,13 @@ def main():
         im.save(os.path.join(PREV, rom + '.png'))
 
         px = b''.join(rgb565_be(*p) for p in im.get_flattened_data())
-        entries.append(ENTRY.pack(rom.encode(), titles[rom].encode(), w, h, cur, len(px)))
+        entries.append(ENTRY.pack(rom.encode(), boots[rom].encode(), titles[rom].encode(), w, h, cur, len(px)))
         blobs.append(px)
         cur += len(px)
         print(f'  {rom:<11}{titles[rom]:<20}{w:>4}x{h:<4}{len(px)/1024:>7.1f}K')
 
     with open(OUT, 'wb') as f:
-        f.write(b'MQ02' + struct.pack('<HH', len(roms), ENTRY.size))
+        f.write(b'MQ03' + struct.pack('<HH', len(roms), ENTRY.size))
         f.write(b''.join(entries))
         f.write(b'\0' * (data_off - hdr_sz))
         f.write(b''.join(blobs))

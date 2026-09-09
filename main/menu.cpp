@@ -173,7 +173,7 @@ void menu_render_range(int ry0, int ry1)
     if (!s_band) return;
     int64_t t0 = esp_timer_get_time();
     const mqart_entry_t *e = mqart_get(s_sel);
-    bool installed = e && game_installed(e->rom);
+    bool installed = e && game_installed(e->boot);
     int  n = mqart_count();
 
     char pos[32];

@@ -5,9 +5,9 @@
 
 static const char *TAG = "mqart";
 
-#define MQART_MAGIC     "MQ02"
+#define MQART_MAGIC     "MQ03"
 #define MQART_SUBTYPE   0x40
-#define DISK_ENTRY_SZ   48      /* 12s rom, 24s title, u16 w, u16 h, u32 off, u32 len */
+#define DISK_ENTRY_SZ   60      /* 12s rom, 12s boot, 24s title, u16 w, u16 h, u32 off, u32 len */
 
 static const esp_partition_t *s_part;
 static mqart_entry_t s_entries[MQART_MAX];
@@ -54,12 +54,14 @@ esp_err_t mqart_init(void)
         if (err != ESP_OK) return err;
 
         mqart_entry_t *m = &s_entries[s_count];
-        memcpy(m->rom, e, 12);       m->rom[12]   = 0;
-        memcpy(m->title, e + 12, 24); m->title[24] = 0;
-        m->w   = rd16(e + 36);
-        m->h   = rd16(e + 38);
-        m->off = rd32(e + 40);
-        m->len = rd32(e + 44);
+        memcpy(m->rom, e, 12);        m->rom[12]   = 0;
+        memcpy(m->boot, e + 12, 12);  m->boot[12]  = 0;
+        memcpy(m->title, e + 24, 24); m->title[24] = 0;
+        m->w   = rd16(e + 48);
+        m->h   = rd16(e + 50);
+        m->off = rd32(e + 52);
+        m->len = rd32(e + 56);
+        if (m->boot[0] == 0) memcpy(m->boot, m->rom, sizeof m->boot);   /* default: boot self */
 
         /* Refuse anything that would read past the partition or overflow the box. */
         if (m->w == 0 || m->h == 0 || m->w > MQART_BOX_W || m->h > MQART_BOX_H ||
@@ -86,6 +88,12 @@ int mqart_find(const char *rom)
     for (int i = 0; i < s_count; i++)
         if (strcmp(s_entries[i].rom, rom) == 0) return i;
     return -1;
+}
+
+const char *mqart_boot_label(const char *rom)
+{
+    int i = mqart_find(rom);
+    return (i >= 0 && s_entries[i].boot[0]) ? s_entries[i].boot : rom;
 }
 
 esp_err_t mqart_read_rows(const mqart_entry_t *e, int row, int nrows, void *dst)

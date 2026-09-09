@@ -23,7 +23,8 @@ extern "C" {
 #define MQART_MAX       24      /* entries we are willing to hold in RAM */
 
 typedef struct {
-    char     rom[13];           /* MAME ROM name, doubles as the partition label */
+    char     rom[13];           /* MAME ROM name; what the launcher records as the selection */
+    char     boot[13];          /* partition label to chain-boot; == rom except for a shared slot */
     char     title[25];         /* display name, e.g. "Ms. Pac-Man" */
     uint16_t w, h;              /* fitted size; w <= 208, h <= 104 */
     uint32_t off, len;          /* byte range within the partition */
@@ -33,6 +34,11 @@ esp_err_t             mqart_init(void);
 int                   mqart_count(void);
 const mqart_entry_t  *mqart_get(int i);
 int                   mqart_find(const char *rom);   /* index, or -1 */
+
+/* The partition label to chain-boot for a given selection ROM. Normally the ROM
+ * itself; for a shared slot (Pac-Man riding Ms. Pac-Man's image) it is the slot
+ * owner's label. Returns rom unchanged if it is not in the blob. */
+const char           *mqart_boot_label(const char *rom);
 
 /* Copy nrows of pixels beginning at row into dst (nrows * e->w * 2 bytes). */
 esp_err_t mqart_read_rows(const mqart_entry_t *e, int row, int nrows, void *dst);

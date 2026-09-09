@@ -64,11 +64,20 @@ def resolve(cfg):
         has_payload = os.path.exists(data_p) if data_p else has_rom
         payload_desc = (f"{g.get('project')}/{data_file}" if data_p else f'roms/{rom}.zip')
 
+        # A game may RIDE another game's slot: `boots = "<owner-rom>"` gives it a menu
+        # entry and marquee but no partition of its own. It chain-boots the owner's
+        # image (which must carry this ROM too - PELLETINO bakes in both Pac-Men) and
+        # records its own ROM as the selection so that image runs the right variant.
+        owner = g.get('boots')
+        boot  = owner or rom
+
         forced = g.get('enabled')
         on = has_payload if forced is None else bool(forced)
         why = ('forced on' if forced is True else
                'disabled in games.toml' if forced is False else
                payload_desc if has_payload else ('no ROM' if not data_p else f'no {data_file}'))
+        if owner:
+            why = f'shares {owner}' + ('' if has_payload else f' (no roms/{rom}.zip)')
 
         if forced is True and not has_payload:
             die(f'{rom} is forced on in games.toml but {payload_desc} is missing')
@@ -79,10 +88,22 @@ def resolve(cfg):
                    binary=g.get('binary'),          # optional: where this game's .bin is, under the project
                    data_kb=g.get('data_kb', 0),     # optional: a data partition of its own, e.g. a video clip
                    data_file=g.get('data_file'),    # optional: the file to flash into it, under the project
+                   boot=boot, owner=owner,          # boot label; owner set iff this entry rides another's slot
                    slot_kb=g.get('slot_kb', default_slot), why=why, has_art=has_art)
         (rows if on else skipped).append(rec)
 
-    return b, rows, skipped
+    # A shared entry only belongs in the build if its owner made it in - it has no
+    # image of its own to fall back on.
+    live = {r['rom'] for r in rows}
+    kept = []
+    for r in rows:
+        if r['owner'] and r['owner'] not in live:
+            r['why'] = f'{r["owner"]} not in build'
+            skipped.append(r)
+        else:
+            kept.append(r)
+
+    return b, kept, skipped
 
 def mqart_kb(n):
     """Size the artwork partition: exact if the blob exists, else estimated."""
@@ -103,10 +124,21 @@ def build_table(b, rows, art_kb):
     off += art_kb * K
     off = (off + ALIGN - 1) & ~(ALIGN - 1)
 
-    for i, r in enumerate(rows):
-        parts.append((r['rom'], 'app', f'ota_{i}', off, r['slot_kb'] * K))
+    slot = 0
+    for r in rows:
+        if r.get('owner'):
+            continue                       # shares the owner's partition, laid out below
+        parts.append((r['rom'], 'app', f'ota_{slot}', off, r['slot_kb'] * K))
         r['offset'] = off
+        r['ota'] = slot
         off += r['slot_kb'] * K
+        slot += 1
+    # shared entries point at their owner's offset - no flash of their own
+    by_rom = {r['rom']: r for r in rows}
+    for r in rows:
+        if r.get('owner'):
+            o = by_rom.get(r['owner'])
+            r['offset'] = o['offset'] if o else 0
 
     # A game may ask for a data partition of its own - a video clip, say. It is laid out
     # after the app slots and labelled "media", which is the label the player looks for,
@@ -132,9 +164,10 @@ def main():
 
     if not rows:
         die('nothing to build - put an approved ROM zip in roms/ (see games.toml)')
-    if len(rows) > OTA_MAX:
-        die(f'{len(rows)} games enabled but ESP-IDF allows at most {OTA_MAX} '
-            f'(ota_0..ota_{OTA_MAX-1}). Disable {len(rows)-OTA_MAX} in games.toml.')
+    nslots = sum(1 for r in rows if not r.get('owner'))
+    if nslots > OTA_MAX:
+        die(f'{nslots} slots needed but ESP-IDF allows at most {OTA_MAX} '
+            f'(ota_0..ota_{OTA_MAX-1}). Disable {nslots-OTA_MAX} in games.toml.')
 
     art_kb, exact = mqart_kb(len(rows))
     parts, end = build_table(b, rows, art_kb)
@@ -145,9 +178,15 @@ def main():
     # --- report -------------------------------------------------------------
     print(f'\n  FIESTACADE  -  {len(rows)} game{"" if len(rows)==1 else "s"} in this build\n')
     w = max(len(r['title']) for r in rows)
-    for i, r in enumerate(rows):
+    for r in rows:
         proj = r['project'] or '-'
-        print(f'   ota_{i:<2} {r["title"]:<{w}}  {r["slot_kb"]:>5} KB  '
+        if r.get('owner'):
+            tag = ' ->  '
+            size = '     '
+        else:
+            tag = f'ota_{r["ota"]:<2}'
+            size = f'{r["slot_kb"]:>5}'
+        print(f'   {tag} {r["title"]:<{w}}  {size} KB  '
               f'0x{r["offset"]:06X}  {proj:<13} {r["why"]}')
     if skipped:
         print(f'\n  not in this build ({len(skipped)}):')
@@ -163,7 +202,7 @@ def main():
     used = end / 1024 / K
     print(f'\n  launcher {b.get("launcher_kb",512)} KB'
           f'   artwork {art_kb} KB{"" if exact else " (estimated - run pack_marquees.py)"}'
-          f'   slots {len(rows)}/{OTA_MAX}')
+          f'   slots {nslots}/{OTA_MAX}')
     print(f'  flash {used:.2f} / {flash/1024/K:.0f} MB   {flash/1024/K - used:.2f} MB free\n')
 
     if args.check:
@@ -181,7 +220,7 @@ def main():
 
     os.makedirs(os.path.dirname(MANIF), exist_ok=True)
     with open(MANIF, 'w') as f:
-        json.dump({'games': [{k: r.get(k) for k in ('rom', 'title', 'project', 'binary', 'slot_kb', 'offset', 'data_kb', 'data_file', 'data_offset')}
+        json.dump({'games': [{k: r.get(k) for k in ('rom', 'title', 'project', 'binary', 'slot_kb', 'offset', 'ota', 'boot', 'owner', 'data_kb', 'data_file', 'data_offset')}
                              for r in rows],
                    'mqart_kb': art_kb, 'flash_mb': b.get('flash_mb', 16)}, f, indent=2)
 
