@@ -145,6 +145,12 @@ project = "GRIDDLE"
 slot_kb = 448
 
 [[game]]
+rom = "rbtapper"
+title = "Root Beer Tapper"
+project = "KEG"
+slot_kb = 768
+
+[[game]]
 rom = "llander"
 title = "Lunar Lander"
 project = "REGOLITH"
