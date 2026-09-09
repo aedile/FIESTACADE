@@ -85,11 +85,16 @@
 > lands at the next `./fiestacade build && flash`, your call while you are
 > playing.
 >
-> **Seen in passing, not touched:** Gyruss draws only about half its frames
-> (160 of 300 per five seconds, 131-181 skipped) - the same frame-loop
-> condition fixed tonight in Moon Patrol, Mario Bros, Tapper and Joust, and
-> the same three-part fix would apply. It predates this session, so it is a
-> proposal, alongside the lettering fix for Missile Command and Rally-X.
+> **Lettering fixes complete:** Joust, Tapper, Mario Bros and now Rally-X
+> (commit 93a503f) squeeze their columns adaptively so text keeps its strokes;
+> Rally-X's one-in-six drop was the worst case. Missile Command was assessed
+> and left alone - its one-in-sixteen drop barely touches text.
+>
+> **Gyruss still draws only about half its frames** (160 of 300 per five
+> seconds). The frame-loop fix that smoothed Moon Patrol/Mario/Tapper/Joust was
+> tried and reverted here: Gyruss is compute-bound (emulation + audio eat ~90%
+> of each second), so it needs core optimisation, not the render pass. Left as
+> a decision - it predates this session.
 >
 > **Board notes worth not re-deriving** are in each project's `core/*.c` header
 > comments and `THIRD_PARTY_NOTICES.md`; the ones that cost real time are:
