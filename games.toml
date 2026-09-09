@@ -25,7 +25,7 @@ launcher_kb   = 512     # the menu's own slot
 default_slot_kb = 768   # for games whose size we have not measured yet
 
 # --- measured: every one of these has a working build, and the slot is its measured
-# --- binary size rounded up. Sizes as of 6 September 2026.
+# --- binary size rounded up to 64 KB with at least ten percent to spare. Sizes as of 9 September 2026.
 
 # PELLETINO carries BOTH Pac-Man and Ms. Pac-Man in one image and picks between them
 # at boot. Ms. Pac-Man owns the slot; Pac-Man rides it via `boots` below, so the pair
@@ -78,19 +78,19 @@ slot_kb = 512
 rom = "dkong"
 title = "Donkey Kong"
 project = "GIRDER"
-slot_kb = 512
+slot_kb = 448
 
 [[game]]
 rom = "centiped"
 title = "Centipede"
 project = "CHILOPODA"
-slot_kb = 512
+slot_kb = 448
 
 [[game]]
 rom = "frogger"
 title = "Frogger"
 project = "RIBBIT"
-slot_kb = 512
+slot_kb = 448
 
 [[game]]
 rom = "rallyx"
@@ -103,34 +103,40 @@ enabled = false      # cut for the full Street Fighter clip
 rom = "tempest"
 title = "Tempest"
 project = "SPINDLE"
-slot_kb = 512
+slot_kb = 448
 
 [[game]]
 rom = "asteroid"
 title = "Asteroids"
 project = "AEROLITE"
-slot_kb = 512
+slot_kb = 384
 
 [[game]]
 rom = "missile"
 title = "Missile Command"
 project = "SILO"
-slot_kb = 512
+slot_kb = 384
 
 # Not an emulator: a video clip. Street Fighter II's attract mode, letterboxed on the
 # portrait panel and looped. The clip lives in a data partition of its own, sized here;
 # the player is 336 KB. Pack a clip with games/HADOUKEN/tools/pack_media.py.
 [[game]]
+rom = "llander"
+title = "Lunar Lander"
+project = "REGOLITH"
+slot_kb = 384
+
+[[game]]
 rom = "galaxian"
 title = "Galaxian"
 project = "ARMADA"
-slot_kb = 512
+slot_kb = 448
 
 [[game]]
 rom = "invaders"
 title = "Space Invaders"
 project = "PHALANX"
-slot_kb = 512
+slot_kb = 448
 
 [[game]]
 rom = "sf2"
