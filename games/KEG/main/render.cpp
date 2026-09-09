@@ -27,7 +27,7 @@ static const char *TAG = "RENDER";
 static uint8_t *fbs[NUM_FB];
 static QueueHandle_t free_q, frame_q;
 static uint16_t pal_swapped[TAP_PALETTE_SIZE];
-static uint16_t x_map[DISPLAY_WIDTH];             /* panel column -> native column */
+static uint8_t drop_order[15];                    /* which neighbour pairs to try first: the middle ones */
 static uint16_t y_map[DISPLAY_HEIGHT];            /* panel row    -> native row, or 0xffff for a bar */
 static uint32_t frames_drawn, frames_dropped;
 static uint64_t busy_us;
@@ -45,10 +45,14 @@ static void present(const uint8_t *fb)
             uint16_t ny = y_map[row + r];
             if (ny == 0xffff) { memset(dst, 0, DISPLAY_WIDTH * sizeof(uint16_t)); dst += DISPLAY_WIDTH; continue; }
             const uint8_t *src = fb + ny * TAP_FB_W;
-            const uint16_t *xm = x_map;
-            for (int px = 0; px < DISPLAY_WIDTH; px += 4, xm += 4, dst += 4) {
-                dst[0] = pal_swapped[src[xm[0]]]; dst[1] = pal_swapped[src[xm[1]]];
-                dst[2] = pal_swapped[src[xm[2]]]; dst[3] = pal_swapped[src[xm[3]]];
+            /* sixteen native columns become fifteen: drop one of the first pair of equal
+             * neighbours, looked for from the middle out, so lettering keeps its strokes */
+            for (int g = 0; g < TAP_FB_W / 16; g++, src += 16, dst += 15) {
+                int j = 7;
+                for (int k = 0; k < 15; k++) { int c = drop_order[k]; if (src[c] == src[c + 1]) { j = c; break; } }
+                int k = 0;
+                for (; k < j; k++) dst[k] = pal_swapped[src[k]];
+                for (; k < 15; k++) dst[k] = pal_swapped[src[k + 1]];
             }
         }
         display_submit_buffer(rows * DISPLAY_WIDTH);
@@ -72,7 +76,7 @@ static void render_task(void *arg)
 
 void render_init(void)
 {
-    for (int i = 0; i < DISPLAY_WIDTH; i++) x_map[i] = (uint16_t)(i * TAP_FB_W / PIC_W);
+    for (int k = 0; k < 15; k++) drop_order[k] = (uint8_t)(7 + ((k & 1) ? -(k + 1) / 2 : k / 2));   /* 7 6 8 5 9 4 10 ... */
     for (int i = 0; i < DISPLAY_HEIGHT; i++) {
         int p = i - TOP_BAR;
         y_map[i] = (p < 0 || p >= PIC_H) ? 0xffff : (uint16_t)(p * TAP_FB_H / PIC_H);

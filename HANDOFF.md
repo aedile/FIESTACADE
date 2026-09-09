@@ -42,7 +42,10 @@
 > fixed blend turned "SYSTEMS GO" into "SYSIEMS 30"; a host replica of the
 > medal's conversion (`games/OSTRICH/host/out/squeeze2.png` shows the
 > before and after) and a pixel-for-pixel check of the packed-nibble code
-> against a plain reference are how it was verified.
+> against a plain reference are how it was verified. Mario Bros and Tapper,
+> which squeeze 256 columns to 240, got the same per-row treatment: a fixed
+> drop had read Tapper's "ON TAP" as "ON TFP". Both still draw every frame
+> (Mario Bros loses two in three hundred in its busiest attract scene).
 >
 > **Frame-loop lessons, applied to Moon Patrol, Mario Bros, Tapper and Joust:** the
 > render task's palette conversion costs about 5 ms a frame and preempts the
