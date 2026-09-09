@@ -30,7 +30,7 @@ static const char *TAG = "INPUT";
 #define FULL_LOCK_COUNTS 12.0f    /* wheel counts at full deflection: 8 counts is already a hard swerve */
 #define DEADBAND_DEG 1.5f
 #define STEER_SIGN (-1.0f)
-#define HOLD_MUTE_US 1000000      /* both buttons together, for this long */
+#define PEDAL_FROM_US 8000000     /* hold the pedal up this long after boot - see input_update */
 
 static int64_t coin_until, both_down_since;
 static bool both_armed, both_fired;
@@ -73,7 +73,14 @@ void input_update(pp_input_t *in)
     if (st.pwr && st.pwr_held_us == 0) input_dbg_presses[1]++;
     input_dbg_levels = (uint8_t)((st.boot ? 0 : 1) | (st.pwr ? 0 : 2));
 
-    in->accel = 0x90;                /* automatic throttle - you hold it the whole race anyway */
+    /*
+     * Automatic throttle - you hold it the whole race anyway. But not from power-on: the game
+     * samples the pedal as it comes out of its self-test and treats whatever it sees as
+     * "released", so a pedal already down at that moment reads as zero for ever after and the
+     * car never moves. Keep it up until the attract mode is on screen, then hold it down for
+     * good; a second game after GAME OVER is fine with it down throughout (checked on the host).
+     */
+    in->accel = (now > PEDAL_FROM_US) ? 0x90 : 0;
     in->brake = 0;
 
     /* a short tap of BOOT shifts gear; longer holds are mute (3 s) and exit (10 s), which
