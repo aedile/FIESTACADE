@@ -1,0 +1,7 @@
+[mapping:emu]
+archive: libemu.a
+entries:
+    dkong (noflash)
+    dkong_video (noflash)
+    dkong_sound (noflash)
+    Z80 (noflash)

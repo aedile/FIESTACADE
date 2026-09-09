@@ -1,0 +1,27 @@
+HADOUKEN's own code is released under the Zero-Clause BSD license (0BSD): no
+attribution, no notice preservation, no conditions.
+
+That covers main/, tools/, and components/audio_hal, display, imu, medal_input
+and medalboot. Two things carry their own licences:
+
+  * components/helix_mp3 is RealNetworks' libhelix-mp3 decoder, under the
+    RealNetworks Public Source License (RPSL) - see the notices.
+  * The JPEG decoder is the TinyJPEG (TJpgDec) in the ESP32-C6's ROM, by ChaN,
+    used through ESP-IDF.
+
+No video is included in this repository. The clip is yours to supply.
+
+---
+
+Copyright (C) 2026 Jesse Castro
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.

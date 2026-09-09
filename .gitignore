@@ -1,5 +1,4 @@
-# the game repos live here now, each its own git repo with its own remote
-games/
+# game source is vendored under games/ (see VENDORED.md for upstream mirrors)
 roms/
 *.zip
 __pycache__/
@@ -13,3 +12,21 @@ marquees/*.png
 marquees/_placeholder/
 lcd/marquees.bin
 lcd/marquees/
+
+# --- vendored game build/rom artifacts (belt-and-suspenders) ---
+games/**/build/
+games/**/build_*/
+games/**/managed_components/
+games/**/sdkconfig
+games/**/sdkconfig.old
+games/**/sdkconfig.defaults.old
+games/**/dependencies.lock
+games/**/*.zip
+games/**/media.bin
+games/**/main/roms/*.h
+games/**/host/harness
+games/**/host/harness_*
+games/**/host/*.dSYM/
+games/**/*.o
+games/**/*.ppm
+.DS_Store

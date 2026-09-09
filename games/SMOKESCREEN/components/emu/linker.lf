@@ -1,0 +1,7 @@
+[mapping:emu]
+archive: libemu.a
+entries:
+    rallyx (noflash)
+    rallyx_video (noflash)
+    rallyx_sound (noflash)
+    Z80 (noflash)
