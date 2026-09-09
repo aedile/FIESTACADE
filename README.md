@@ -78,6 +78,9 @@ Per-game, the tilt and the BOOT action are:
 | Pac-Man | `pacman` | steer (4-way maze) | — |
 | Ms. Pac-Man | `mspacman` | steer (4-way maze) | — |
 | Galaga | `galaga` | move the fighter L/R | fire |
+| Galaxian | `galaxian` | move the fighter L/R | fire |
+| Space Invaders | `invaders` | move the cannon L/R | fire |
+| Lunar Lander | `llander` | twist = rotate, tip away = throttle (analogue) | abort |
 | Dig Dug | `digdug` | move L/R (dominant axis) | pump |
 | Donkey Kong | `dkong` | run / climb (dominant axis) | jump |
 | Frogger | `frogger` | hop L/R (dominant axis) | hop forward |
