@@ -29,7 +29,11 @@ static uint16_t pal_swapped[RX_PALETTE_SIZE];
 #define PIC_W DISPLAY_WIDTH                       /* 240 */
 #define PIC_H (DISPLAY_WIDTH * 3 / 4)             /* 180: the 4:3 shape of the real monitor */
 #define TOP_BAR ((DISPLAY_HEIGHT - PIC_H) / 2)    /* 50 blank rows above and below */
-static uint16_t x_map[PIC_W];                     /* panel column -> native column */
+/* The picture is 288 native columns squeezed to 240: six become five. Rather than drop a
+ * fixed column in every six - which cuts a stroke out of the HUD lettering - the choice is
+ * made per row and per group of six: the first adjacent pair of equal pixels, looked for from
+ * the middle outwards, loses one of the two, so text keeps its strokes. */
+static uint8_t drop_order[5];                      /* which of the six's five pairs to try first */
 static uint16_t y_map[PIC_H];                     /* picture row  -> native row */
 static uint32_t frames_drawn, frames_dropped;
 static uint64_t busy_us;
@@ -47,7 +51,13 @@ static void present(const uint8_t *fb)
             int py = row + r - TOP_BAR;
             if (py < 0 || py >= PIC_H) { for (int px = 0; px < DISPLAY_WIDTH; px++) *dst++ = 0; continue; }
             const uint8_t *src = fb + y_map[py] * RX_FB_W;
-            for (int px = 0; px < PIC_W; px++) *dst++ = pal_swapped[src[x_map[px]]];
+            for (int g = 0; g < RX_FB_W / 6; g++, src += 6) {
+                int j = 2;
+                for (int k = 0; k < 5; k++) { int c = drop_order[k]; if (src[c] == src[c + 1]) { j = c; break; } }
+                int k = 0;
+                for (; k < j; k++)  *dst++ = pal_swapped[src[k]];
+                for (k = j + 1; k < 6; k++) *dst++ = pal_swapped[src[k]];
+            }
         }
         display_write_preswapped(chunk, rows * DISPLAY_WIDTH);
     }
@@ -70,7 +80,7 @@ static void render_task(void *arg)
 
 void render_init(void)
 {
-    for (int i = 0; i < PIC_W; i++) x_map[i] = (uint16_t)(i * RX_FB_W / PIC_W);
+    for (int k = 0; k < 5; k++) drop_order[k] = (uint8_t)(2 + ((k & 1) ? (k + 1) / 2 : -(k / 2)));   /* 2 3 1 4 0 */
     for (int i = 0; i < PIC_H; i++) y_map[i] = (uint16_t)(i * RX_FB_H / PIC_H);
     chunk = (uint16_t *)heap_caps_malloc(ROWS_PER_CHUNK * DISPLAY_WIDTH * sizeof(uint16_t), MALLOC_CAP_8BIT);
     free_q = xQueueCreate(NUM_FB, sizeof(uint8_t *));
