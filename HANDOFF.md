@@ -100,8 +100,9 @@
 > games was tried and reverted (it cost heap and did not touch the real
 > bottleneck). Making Gyruss full-rate means speeding up the Z80 emulation,
 > which is the Fayzullin core shared across most of the bundle - a real,
-> risky optimisation that would touch many games. Left as a decision; it
-> predates this session.
+> risky optimisation that would touch many games. The one free win was ruled out: its cores are already in IRAM (noflash)
+> and built -O3 with jump tables, same as the full-rate games, so the cost is
+> inherent, not a missed flag. Left as a decision; it predates this session.
 >
 > **Board notes worth not re-deriving** are in each project's `core/*.c` header
 > comments and `THIRD_PARTY_NOTICES.md`; the ones that cost real time are:
