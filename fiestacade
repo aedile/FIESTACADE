@@ -3,6 +3,7 @@
 # FIESTACADE - build a multi-game arcade medal.
 #
 #   ./fiestacade              what this build contains
+#   ./fiestacade pick         choose which games go in (when more fit than the flash holds)
 #   ./fiestacade build        artwork + partition table + firmware
 #   ./fiestacade flash [port] write it all to a connected medal
 #
@@ -35,6 +36,11 @@ ensure_venv() {
 }
 
 cmd_status()  { python3 tools/configure.py --check; }
+
+cmd_pick() {
+    ensure_venv
+    "$VENV/bin/python" tools/pick.py "$@"
+}
 
 cmd_art() {
     ensure_venv
@@ -85,6 +91,7 @@ cmd_help() {
 
     ./fiestacade              what this build contains, and what it is missing
     ./fiestacade games        the approved list, and which ROMs you have
+    ./fiestacade pick         choose which games fit this build (when they overflow)
     ./fiestacade build        artwork + partition table + firmware
     ./fiestacade flash [port] write everything to a connected medal
     ./fiestacade clean        remove build output
@@ -106,6 +113,7 @@ EOF
 case "${1:-status}" in
     status|'')  cmd_status ;;
     games|list) cmd_games ;;
+    pick)       shift; cmd_pick "$@" ;;
     build)      cmd_build ;;
     flash)      shift; cmd_flash "$@" ;;
     art)        shift; cmd_art "$@" ;;

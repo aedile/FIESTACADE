@@ -20,6 +20,7 @@ ROMS   = os.path.join(ROOT, 'roms')
 ART    = os.path.join(ROOT, 'marquees')
 GAMES  = os.path.join(ROOT, 'games')
 BLOB   = os.path.join(ROOT, 'lcd', 'marquees.bin')
+SEL    = os.path.join(ROOT, 'selection.txt')
 PARTS  = os.path.join(ROOT, 'partitions.csv')
 MANIF  = os.path.join(ROOT, 'build', 'manifest.json')
 
@@ -44,10 +45,30 @@ def load():
     with open(CONF, 'rb') as f:
         return tomllib.load(f)
 
-def resolve(cfg):
-    """Decide what is in the build, and why."""
+def load_selection():
+    """The optional pick list written by `fiestacade pick`. One ROM name per line;
+    blank lines and #comments ignored. Returns a set, or None when there is no file
+    (in which case every game whose ROM is present is included, as before)."""
+    if not os.path.exists(SEL):
+        return None
+    picked = set()
+    for line in open(SEL):
+        line = line.split('#', 1)[0].strip()
+        if line:
+            picked.add(line)
+    return picked
+
+
+def resolve(cfg, picked='auto'):
+    """Decide what is in the build, and why.
+
+    picked='auto' reads selection.txt (the normal path); pass a set (or None for
+    'everything present') to evaluate a hypothetical selection - `fiestacade pick`
+    does this to price a candidate build."""
     b = cfg.get('build', {})
     default_slot = b.get('default_slot_kb', 768)
+    if picked == 'auto':
+        picked = load_selection()
     rows, skipped = [], []
 
     for g in cfg.get('game', []):
@@ -72,12 +93,19 @@ def resolve(cfg):
         boot  = owner or rom
 
         forced = g.get('enabled')
-        on = has_payload if forced is None else bool(forced)
+        if forced is None:
+            on = has_payload and (picked is None or rom in picked)
+        else:
+            on = bool(forced)
         why = ('forced on' if forced is True else
                'disabled in games.toml' if forced is False else
                payload_desc if has_payload else ('no ROM' if not data_p else f'no {data_file}'))
+        if forced is None and has_payload and picked is not None and rom not in picked:
+            why = 'not picked (fiestacade pick)'
         if owner:
             why = f'shares {owner}' + ('' if has_payload else f' (no roms/{rom}.zip)')
+            if forced is None and picked is not None and rom not in picked:
+                why = 'not picked (fiestacade pick)'
 
         if forced is True and not has_payload:
             die(f'{rom} is forced on in games.toml but {payload_desc} is missing')
@@ -167,13 +195,13 @@ def main():
     nslots = sum(1 for r in rows if not r.get('owner'))
     if nslots > OTA_MAX:
         die(f'{nslots} slots needed but ESP-IDF allows at most {OTA_MAX} '
-            f'(ota_0..ota_{OTA_MAX-1}). Disable {nslots-OTA_MAX} in games.toml.')
+            f'(ota_0..ota_{OTA_MAX-1}). Run ./fiestacade pick to choose {OTA_MAX} of them.')
 
     art_kb, exact = mqart_kb(len(rows))
     parts, end = build_table(b, rows, art_kb)
     if end > flash:
-        die(f'needs {end/1024/1024:.2f} MB but the part is {flash/1024/1024:.0f} MB. '
-            f'Disable a game or reduce a slot_kb in games.toml.')
+        die(f'needs {end/1024/1024:.2f} MB but the flash is {flash/1024/1024:.0f} MB. '
+            f'Run ./fiestacade pick to choose a build that fits.')
 
     # --- report -------------------------------------------------------------
     print(f'\n  FIESTACADE  -  {len(rows)} game{"" if len(rows)==1 else "s"} in this build\n')

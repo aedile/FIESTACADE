@@ -30,3 +30,6 @@ games/**/host/*.dSYM/
 games/**/*.o
 games/**/*.ppm
 .DS_Store
+
+# per-user build pick list (fiestacade pick)
+selection.txt
