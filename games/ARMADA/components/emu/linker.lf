@@ -1,0 +1,7 @@
+[mapping:emu]
+archive: libemu.a
+entries:
+    galaxian (noflash)
+    galaxian_video (noflash)
+    galaxian_sound (noflash)
+    Z80 (noflash)

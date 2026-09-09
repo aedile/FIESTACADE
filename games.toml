@@ -121,6 +121,12 @@ slot_kb = 512
 # portrait panel and looped. The clip lives in a data partition of its own, sized here;
 # the player is 336 KB. Pack a clip with games/HADOUKEN/tools/pack_media.py.
 [[game]]
+rom = "galaxian"
+title = "Galaxian"
+project = "ARMADA"
+slot_kb = 512
+
+[[game]]
 rom = "invaders"
 title = "Space Invaders"
 project = "PHALANX"
