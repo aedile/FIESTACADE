@@ -151,6 +151,12 @@ project = "KEG"
 slot_kb = 768
 
 [[game]]
+rom = "joust"
+title = "Joust"
+project = "OSTRICH"
+slot_kb = 448
+
+[[game]]
 rom = "llander"
 title = "Lunar Lander"
 project = "REGOLITH"

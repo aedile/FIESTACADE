@@ -1,0 +1,6 @@
+[mapping:emu]
+archive: libemu.a
+entries:
+    joust (noflash)
+    joust_video (noflash)
+    joust_sound (noflash)
