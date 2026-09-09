@@ -44,8 +44,14 @@ printf '  %-22s %-10s %s\n' launcher 0x20000 "$BUILD/fiestacade.bin"
 printf '  %-22s %-10s %s\n' artwork "$mqart_off" lcd/marquees.bin
 
 missing=0
-while IFS=$'\t' read -r rom title project binary offset data_file data_offset; do
+while IFS=$'\t' read -r rom title project binary offset data_file data_offset owner; do
     [ -n "$rom" ] || continue
+    # a shared-slot rider (Pac-Man on Ms. Pac-Man) has no image of its own; the
+    # owner already flashes that slot, so skip it here to avoid a duplicate write
+    if [ -n "$owner" ] && [ "$owner" != "-" ] && [ "$owner" != "null" ]; then
+        printf '  %-22s %-10s %s(rides %s)%s\n' "$title" "$offset" $'\033[2m' "$owner" $'\033[0m'
+        continue
+    fi
     bin=""
     if [ -n "$project" ] && [ "$project" != "null" ]; then
         # '-' means games.toml named no binary; an empty field would be swallowed by read
@@ -76,7 +82,7 @@ done < <(python3 -c "
 import json
 for g in json.load(open('$MANIFEST'))['games']:
     print('\t'.join([g['rom'], g['title'], str(g.get('project') or ''), str(g.get('binary') or '-'), hex(g['offset']),
-                     str(g.get('data_file') or '-'), hex(g.get('data_offset') or 0)]))
+                     str(g.get('data_file') or '-'), hex(g.get('data_offset') or 0), str(g.get('owner') or '-')]))
 ")
 
 ESPTOOL=$(command -v esptool.py || echo "python3 -m esptool")
