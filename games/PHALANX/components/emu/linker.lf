@@ -1,0 +1,6 @@
+[mapping:emu]
+archive: libemu.a
+entries:
+    invaders (noflash)
+    invaders_sound (noflash)
+    Z80 (noflash)
