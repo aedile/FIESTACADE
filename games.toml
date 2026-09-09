@@ -157,6 +157,12 @@ project = "OSTRICH"
 slot_kb = 448
 
 [[game]]
+rom = "mpatrolw"
+title = "Moon Patrol"
+project = "BUGGY"
+slot_kb = 512
+
+[[game]]
 rom = "llander"
 title = "Lunar Lander"
 project = "REGOLITH"

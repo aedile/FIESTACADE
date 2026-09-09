@@ -86,6 +86,7 @@ Per-game, the tilt and the BOOT action are:
 | Burger Time | `btime` | walk in 4 directions (dominant axis) | pepper |
 | Root Beer Tapper | `rbtapper` | twist along the bar, tip between bars | pour (hold to fill) |
 | Joust | `joust` | twist to run left and right | flap |
+| Moon Patrol | `mpatrolw` | twist to slow down and speed up | jump (the guns fire themselves) |
 | Donkey Kong | `dkong` | run / climb (dominant axis) | jump |
 | Mario Bros. | `mario` | run L/R | jump |
 | Frogger | `frogger` | hop L/R (dominant axis) | hop forward |

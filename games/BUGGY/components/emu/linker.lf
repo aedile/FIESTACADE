@@ -1,0 +1,8 @@
+[mapping:emu]
+archive: libemu.a
+entries:
+    mpatrol (noflash)
+    mpatrol_video (noflash)
+    mpatrol_sound (noflash)
+    ay8910 (noflash)
+    Z80 (noflash)
