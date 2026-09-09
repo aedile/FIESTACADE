@@ -1,182 +1,180 @@
 # FIESTACADE
 
-A multi-game arcade medal for the **Waveshare ESP32-C6-LCD-1.69**. Tilt to browse
-marquees, hold the button to pick a game, and the medal boots straight into it
-from then on.
+A multi-game arcade medal for the **Waveshare ESP32-C6-LCD-1.69**. Tilt the medal
+to browse marquees, hold the button to pick a game, and it boots straight into
+that game from then on — until you deliberately come back to the menu.
 
-FIESTACADE itself is the menu. Each game is a separate firmware in its own slot,
-and the launcher chain-boots them.
+FIESTACADE itself is the menu (the "launcher"). Each game is a separate firmware
+image in its own flash slot; the launcher chain-boots them. Everything in a build
+— the partition table, the artwork, the menu — is generated from the ROMs you
+supply. You never hand-edit a partition table, a header, or a makefile.
+
+> **ROMs are yours to supply.** This project ships none. Drop the zips you own
+> into `roms/` using their MAME names. Marquee artwork is copyrighted too, so we
+> ship none of that either — see [Marquee art](#marquee-art).
 
 ---
 
 ## Quick start
 
 ```sh
-./minimame games      # what you can build, and which ROMs you already have
-# put ROM zips in roms/  (see below)
-./minimame build
-./minimame flash
+./fiestacade games      # the approved list, and which ROMs you already have
+# put ROM zips in roms/ using their MAME names
+./fiestacade pick       # (only if more games are present than fit) choose a build
+./fiestacade build      # artwork + partition table + launcher firmware
+./fiestacade flash      # write it all to a connected medal
 ```
 
-That is the whole thing. You do not edit a partition table, a header file or a
-makefile. Everything is generated from the ROMs you supply.
+`./fiestacade` on its own reports what the current build contains and what it is
+missing. `./fiestacade help` lists every command.
+
+A game appears in the menu only if its ROM is in `roms/`. Games you don't have a
+ROM for are simply absent — no slot, no menu entry, no wasted flash.
 
 ---
 
-## What you need to supply
+## Choosing a build — `fiestacade pick`
 
-**ROM zips.** We ship none, and finding them is your responsibility. Drop them in
-`roms/` using their MAME names:
+The medal has room for **16 game slots** inside **16 MB** of flash, shared with
+the launcher and the artwork. More games are approved than fit, and you may hold
+more ROMs than fit. When a build overflows, `./fiestacade pick` walks the list of
+everything you have and prices each choice live — slots used, flash used, space
+free — so you can land a build that fits before you flash it:
 
 ```
-roms/galaga.zip
-roms/mspacman.zip
-roms/centiped.zip
+   1. [x] Ms. Pac-Man          1024 KB   mspacman
+   2. [x] Pole Position        1024 KB   polepos
+   3. [ ] Star Wars             768 KB   starwars
+   ...
+  slots 11/16   flash 12.75/16 MB   3.25 MB free
 ```
 
-`./minimame games` prints the approved list with a `*` next to the ones you have.
-A game with no ROM is simply left out — no slot, no menu entry, no wasted flash.
-
-**Nothing else.** The toolchain runs in Docker and the Python tools install
-themselves into a local `.venv` on first build.
+Type a number to toggle a game, `a` to auto-pick everything that fits, `s` to
+save, `q` to quit. It writes `selection.txt`, which the build honours. Delete
+that file (or `./fiestacade pick --clear`) to go back to "every ROM present is
+included." Picking is entirely optional — reach for it only when a build overflows.
 
 ---
 
-## Commands
+## Controls
 
-| | |
-|---|---|
-| `./minimame` | what this build contains, and what it is missing |
-| `./minimame games` | the approved list, and which ROMs you have |
-| `./minimame build` | artwork → partition table → firmware |
-| `./minimame flash [port]` | write everything to a connected medal |
-| `./minimame clean` | remove build output |
-| `./minimame help` | all of the above |
+Every game is played the same way physically: **hold the medal upright and twist
+or tip it** — the tilt sensor is the joystick, spinner, wheel, or yoke. Two
+buttons do the rest.
 
-`./minimame` on its own changes nothing, so it is always safe to run when you want
-to know where you stand.
+| Button | Short press | Hold |
+|---|---|---|
+| **BOOT** (top) | the game's action — fire / jump / hop / pump | 3 s: sound off/on · 10 s: back to the menu |
+| **PWR** (side) | insert a coin (then auto-start ½ s later) | 1 s: power the medal off |
 
----
+> A **coin** is always a coin and a **start** is always a start, on every game.
+> Sound-off (mute) and back-to-menu are the same gesture everywhere. Picking a
+> game from the menu is a button *hold*; a knock won't do it.
 
-## Choosing games
+Per-game, the tilt and the BOOT action are:
 
-Presence of a ROM is the switch. That is usually all you want, but `games.toml`
-can override it per game:
+| Game | ROM | Tilt does | BOOT does |
+|---|---|---|---|
+| Pac-Man | `pacman` | steer (4-way maze) | — |
+| Ms. Pac-Man | `mspacman` | steer (4-way maze) | — |
+| Galaga | `galaga` | move the fighter L/R | fire |
+| Dig Dug | `digdug` | move L/R (dominant axis) | pump |
+| Donkey Kong | `dkong` | run / climb (dominant axis) | jump |
+| Frogger | `frogger` | hop L/R (dominant axis) | hop forward |
+| Rally-X | `rallyx` | drive L/R | lay a smoke screen |
+| Centipede | `centiped` | trackball L/R (angle = speed) | fire |
+| Missile Command | `missile` | trackball L/R (angle = speed) | fire (cycles the 3 bases) |
+| Asteroids | `asteroid` | twist = rotate, tip away = thrust | fire (hold 0.7 s: hyperspace) |
+| Tempest | `tempest` | claw around the rim | fire (short 2nd press: superzapper) |
+| Gyruss | `gyruss` | move around the ring | fire |
+| Arkanoid | `arkanoidu` | paddle, absolute (±32° sweep) | fire (once the laser is fitted) |
+| Star Wars | `starwars` | flight yoke — twist yaws, tip pitches | fire (also starts, in free play) |
+| Pole Position | `polepos` | steer like a wheel | — (throttle is automatic; BOOT taps shift gear) |
+| Street Fighter II | `sf2` | — (attract-mode video, see below) | — |
 
-```toml
-[[game]]
-rom     = "gyruss"
-title   = "Gyruss"
-enabled = false      # never build it, even though roms/gyruss.zip exists
-```
-
-`enabled = true` forces a game in and fails loudly if its ROM is missing.
-
-**Turning a game off frees its slot.** The partition table is generated, not
-hand-maintained, so a five-game build gets five slots and the remaining flash
-stays empty. This matters: ESP-IDF allows at most 16 app slots, and `configure.py`
-will stop you before you exceed them rather than after.
-
-Adding a game to the approved list means adding an entry to `games.toml` and
-putting `marquees/<rom>.png` beside it. The build fails clearly if artwork is
-missing.
-
----
-
-## What actually happens on `build`
-
-```
-games.toml + roms/*.zip
-   │
-   ├─ tools/pack_marquees.py   fits artwork to 208×104, packs lcd/marquees.bin
-   ├─ tools/configure.py       writes partitions.csv and build/manifest.json
-   └─ docker idf.py build      compiles the launcher
-```
-
-Both generators read the same manifest, so the menu can never disagree with the
-partition table about which games exist.
-
-## Where the games live
-
-Each game is its own project, and they sit in `games/`:
-
-```
-games/GIRDER/        Donkey Kong        games/SPINDLE/       Tempest
-games/PELLETINO/     Ms. Pac-Man        games/TOCCATA/       Gyruss
-games/VAUS/          Arkanoid           ...and so on
-```
-
-`games/medal-input/` sits alongside them: not a game, but the shared controls
-component every one of them vendors a copy of.
-
-Every one is a separate git repository with its own GitHub remote, so `games/`
-is ignored by this repository rather than tracked as a pile of submodules. Clone
-or move them freely; `tools/flash_all.sh` looks in `games/` by default and takes
-`PROJECTS_DIR` if you keep them elsewhere.
-
-`games.toml` names the project directory for each ROM, and flashing builds the
-path from that plus the lowercased project name — `games/GIRDER/build_docker/girder.bin`.
-A game can name its binary instead with `binary = "..."`, relative to the project:
-that is how PELLETINO, which chooses Pac-Man or Ms. Pac-Man at build time, supplies
-both from two build directories.
-
-Flashing writes the launcher, the artwork blob, and each game binary to the slot
-labelled with its ROM name. Games you have not built yet leave their slot empty
-and show as `NOT INSTALLED` in the menu — flash them later without rebuilding
-anything else.
+Pole Position starts on a coin (free-play) and holds the accelerator down for
+you, so the whole game is one wheel plus the gear tap — every other gesture then
+matches the rest of the medal.
 
 ---
 
-## Using it
+## Adding a video "game"
 
-| | |
-|---|---|
-| **Tilt left/right** | browse |
-| **Hold the button 2 s** | pick that game — the medal now boots to it every time |
-| **Hold the button 10 s in a game** | back to the menu |
-| **Hold the button while powering on** | back to the menu, whatever is selected |
+A game slot can hold a looping video clip instead of an emulator — Street Fighter
+II ships as its attract-mode reel. The clip lives in a data partition of its own.
 
-Taps do nothing, so a medal will not start itself in a pocket.
+- Encode and pack a clip with `games/HADOUKEN/tools/pack_media.py` — it letterboxes
+  to the portrait panel and writes `media.bin`. See that script for the size limit
+  and encoding settings; a longer clip needs a bigger `data_kb` in `games.toml`.
+- The video slot is switched on by `games/HADOUKEN/media.bin` existing, the same
+  way a ROM zip switches on an emulated game.
 
-That last row is the one to remember. It always works, including when a selected
-game is misbehaving.
-
----
-
-## Troubleshooting
-
-**`docker is installed but not running`** — start Docker Desktop.
-
-**`nothing to build`** — `roms/` has no approved ROM zip. `./minimame games`.
-
-**`N games enabled but ESP-IDF allows at most 16`** — disable some in
-`games.toml`.
-
-**`marquees/<rom>.png is missing`** — the game is on the approved list but has no
-artwork. Add it, or set `enabled = false`.
-
-**Menu says `NO ARTWORK`** — the `mqart` partition was never written. Re-run
-`./minimame flash`.
-
-**Every game says `NOT INSTALLED`** — expected before any game firmware is built.
-The launcher works; the slots are empty.
-
-**Tilt browses the wrong way** — flip the sign in `read_roll()` in
-`main/input.cpp`.
+Only one game per build may carry a data partition (it is labelled `media`, which
+is the label the player looks for).
 
 ---
 
-## Documentation
+## Marquee art
 
-- **`ARCHITECTURE.md`** — how the boot model works, what a game must do to be
-  launchable, and the memory and byte-order rules. Read this before changing
-  firmware or adding a game driver.
-- **`HANDOFF.md`** — current state, what is verified and what is not, and the
-  open task list.
-- **`games.toml`** — the approved list, commented.
+The carousel shows a marquee for each game. **Game logos are copyrighted, so we
+ship none.** You have two options:
 
-## Licensing
+- **Fetch:** `./fiestacade art` pulls marquees from a third-party archive into
+  `marquees/`. See `tools/fetch_marquees.py` for the source and the `FIESTACADE_ART_BASE`
+  override.
+- **Supply your own:** drop a PNG named `marquees/<rom>.png` (any resolution; it's
+  fitted to a 208×104 box).
 
-FIESTACADE ships no ROMs and no game code. Marquee artwork is scanned cabinet art
-belonging to its respective rights holders, included here for personal use on a
-single device.
+Any game without a marquee gets a plain generated text banner, so the build never
+blocks on missing art.
+
+---
+
+## Two games, one slot
+
+Pac-Man and Ms. Pac-Man are carried in **one image** that picks which to run at
+boot, so the pair costs one slot instead of two. In `games.toml`, Ms. Pac-Man owns
+the slot and Pac-Man rides it (`boots = "mspacman"`); both still appear as separate
+menu entries, and selecting either records which one the shared image should run.
+The same mechanism (`boots = "<owner>"`) works for any two games that share an image.
+
+---
+
+## How a build is laid out
+
+```
+nvs / otadata / phy_init         housekeeping
+launcher            0x20000      the FIESTACADE menu (factory app)
+mqart                            marquee artwork blob (lcd/marquees.bin)
+ota_0..ota_N                     one app slot per game, labelled with its ROM
+media               (optional)   a video clip's data partition
+```
+
+`tools/configure.py` generates `partitions.csv` and `build/manifest.json` from
+`games.toml` plus whatever is in `roms/`, so the firmware and the flasher can
+never disagree about where a game lives. The launcher finds a game by its
+partition label, so adding a game never recompiles the launcher.
+
+---
+
+## Repository layout
+
+- `games/` — every game's source, vendored in so one clone builds everything. Each
+  folder is also mirrored at its own `aedile/*` GitHub repo; `VENDORED.md` records
+  the upstream and commit for each.
+- `components/` — code shared by the launcher: display, gfx, IMU, `mqart` (artwork),
+  `medalboot` (which game boots, and the way back out), `medal_input` (buttons,
+  battery, coin/start, mute/exit holds, the tilt zero).
+- `tools/` — the build tooling behind `./fiestacade`.
+- `games.toml` — the one place that decides what a build *can* contain.
+
+---
+
+## Building without Docker
+
+`./fiestacade build` uses the `espressif/idf:v5.3.4` Docker image so you need
+nothing installed but Docker. If you have ESP-IDF v5.3.4 natively, you can run the
+underlying steps yourself; see the commands `./fiestacade` prints.
+
+Docker Desktop on macOS can't reach USB, so **flashing always runs on the host** —
+that is what `tools/flash_all.sh` (behind `./fiestacade flash`) does.
