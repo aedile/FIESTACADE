@@ -3,7 +3,10 @@
  * and whose port 2 strobes them, an MSM5205 ADPCM chip clocked at 384 kHz whose sample clock
  * interrupts the CPU (NMI) for the next nibble, and the command latch from the main board on
  * the first AY's port A. The 6803's timer is never touched by this program; only its ports and
- * internal RAM are modelled.
+ * internal RAM are modelled. Moon Patrol's program holds the ADPCM chip in reset throughout
+ * (it writes 0x13 to the AY port that controls it, and 0xFF to an address the board's map does
+ * not route to the chip), so every sound of the game is the AYs'; the chip is modelled for
+ * completeness and is silent here as it is under MAME's map.
  */
 #include "mpatrol_internal.h"
 #include "ay8910.h"
@@ -34,8 +37,14 @@ static const int msm_step_size[49] = {
     1060, 1166, 1282, 1411, 1552 };
 static const int msm_index_shift[8] = { -1, -1, -1, -1, 2, 4, 6, 8 };
 
+#ifdef MP_DEBUG
+uint32_t mp_dbg_msm_active, mp_dbg_msm_nonzero, mp_dbg_msm_nibbles, mp_dbg_presc_writes;
+#endif
 static void msm_clock(void)
 {
+#ifdef MP_DEBUG
+    if (!msm_reset) { mp_dbg_msm_active++; if (msm_data & 7) mp_dbg_msm_nonzero++; }
+#endif
     /* one sample period: take the nibble the program left, as the chip does on its own clock */
     if (msm_reset) { msm_signal = 0; msm_step = 0; msm_out = 0; return; }
     int nib = msm_bits4 ? (msm_data & 0x0f) : ((msm_data & 0x07) << 1);
@@ -56,9 +65,13 @@ static void ay45m_port_write(void *ctx, int port, uint8_t v)
 {
     (void)ctx;
     if (port != 1) return;
-    static const int presc[4] = { 96, 64, 48, 96 };    /* the last is "external clock", never used here */
+#ifdef MP_DEBUG
+    mp_dbg_presc_writes++;
+    { extern uint32_t mp_dbg_pb_hist[256]; mp_dbg_pb_hist[v]++; }
+#endif
+    static const int presc[4] = { 96, 48, 64, 96 };    /* S1 = bit 2, S2 = bit 3; both set is "external clock", never used here */
     msm_presc = presc[(v >> 2) & 3];
-    msm_bits4 = !(v & 0x10);
+    msm_bits4 = (v & 0x10) != 0;
     msm_reset = v & 1;
 }
 static uint8_t ay45m_port_read(void *ctx, int port) { (void)ctx; return port == 0 ? latch : 0xff; }
@@ -118,7 +131,12 @@ static void bus_write(uint16_t a, uint8_t d)
         }
         return;
     }
-    if (a < 0x1000) { if (a & 1) msm_data = d; return; }      /* the ADPCM nibble */
+    if (a < 0x1000) {
+#ifdef MP_DEBUG
+        mp_dbg_msm_nibbles++;
+        { extern uint32_t mp_dbg_nib_hist[16], mp_dbg_nib_addr[8]; mp_dbg_nib_hist[d & 15]++; mp_dbg_nib_addr[(a >> 9) & 7]++; }
+#endif
+        if (a & 1) msm_data = d; return; }      /* the ADPCM nibble */
     if (a < 0x2000) { if (latch & 0x80) irq_line = 0; return; }
 }
 
