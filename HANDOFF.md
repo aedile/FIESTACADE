@@ -62,6 +62,18 @@
 > Paperboy are 68010 and T11 boards, out of the question. Their zips stay in
 > `roms/` unused.
 >
+> **The medal, as left:** its flash holds the same 16-game build as before
+> tonight. Galaxian's and Gyruss's slots were used to test the new games and
+> were written back from `games/ARMADA/build_docker/armada.bin` and
+> `games/TOCCATA/build_docker/toccata.bin` (every esptool write verified);
+> NVS selects Gyruss, as it did. After the final restore the medal reset,
+> chain-booted, and then dropped off USB entirely (no `/dev/cu.usbmodem*`, not
+> in `system_profiler`) and did not come back in several minutes, so its
+> normal boot was NOT re-verified afterwards. Most likely it is in
+> power-management light sleep, which switches the USB port off; a button
+> press or a power cycle should bring it back. If the launcher's attempts
+> counter ever gives up on a game, hold the button at power-on for the menu.
+>
 > **Board notes worth not re-deriving** are in each project's `core/*.c` header
 > comments and `THIRD_PARTY_NOTICES.md`; the ones that cost real time are:
 > Joust's ROM bank only covers reads, and its empty CMOS makes the program wait
