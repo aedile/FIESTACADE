@@ -332,10 +332,11 @@ void ap_update(sw_input_t *in, uint64_t now_us, int human_active)
          * is pulsed, because the game fires on the press, not while held */
         static int trig;
         trig++;
-        /* fire in the trench no matter what (the port and the turrets are both straight ahead),
-         * and on a threat once the crosshair is close; the trigger is pulsed, the game fires on
-         * the press */
-        int on_target = shoot_here && (in_trench || (abs(ex) < 30 && abs(ey) < 30));
+        /* In the trench, hold fire until the game calls the exhaust port ("EXHAUST PORT AHEAD"
+         * is up) - a constant barrage down the trench drowns the music and looks nothing like
+         * a pilot. Outside it, shoot a threat once the crosshair is close. The trigger is
+         * pulsed, because the game fires on the press. */
+        int on_target = shoot_here && (in_trench ? port_ahead : (abs(ex) < 30 && abs(ey) < 30));
         in->fire = on_target ? (trig & 1) : 0;
         return;
     }
