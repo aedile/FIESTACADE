@@ -7,3 +7,9 @@ __pycache__/
 build_docker/
 build/
 lcd/preview/
+
+# marquee artwork is copyrighted (game logos); ship none - fetch or supply your own
+marquees/*.png
+marquees/_placeholder/
+lcd/marquees.bin
+lcd/marquees/

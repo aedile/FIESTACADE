@@ -72,8 +72,8 @@ def resolve(cfg):
 
         if forced is True and not has_payload:
             die(f'{rom} is forced on in games.toml but {payload_desc} is missing')
-        if on and not has_art:
-            die(f'{rom} is in the build but marquees/{rom}.png is missing')
+        # art is optional: a game without marquees/<rom>.png gets a generated text banner
+        # (tools/make_placeholders.py), so this no longer blocks the build
 
         rec = dict(rom=rom, title=g.get('title', rom), project=g.get('project'),
                    binary=g.get('binary'),          # optional: where this game's .bin is, under the project
@@ -143,7 +143,7 @@ def main():
             f'Disable a game or reduce a slot_kb in games.toml.')
 
     # --- report -------------------------------------------------------------
-    print(f'\n  MINIMAME  -  {len(rows)} game{"" if len(rows)==1 else "s"} in this build\n')
+    print(f'\n  FIESTACADE  -  {len(rows)} game{"" if len(rows)==1 else "s"} in this build\n')
     w = max(len(r['title']) for r in rows)
     for i, r in enumerate(rows):
         proj = r['project'] or '-'

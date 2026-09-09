@@ -1,10 +1,10 @@
-# MINIMAME
+# FIESTACADE
 
 A multi-game arcade medal for the **Waveshare ESP32-C6-LCD-1.69**. Tilt to browse
 marquees, hold the button to pick a game, and the medal boots straight into it
 from then on.
 
-MINIMAME itself is the menu. Each game is a separate firmware in its own slot,
+FIESTACADE itself is the menu. Each game is a separate firmware in its own slot,
 and the launcher chain-boots them.
 
 ---
@@ -177,6 +177,6 @@ The launcher works; the slots are empty.
 
 ## Licensing
 
-MINIMAME ships no ROMs and no game code. Marquee artwork is scanned cabinet art
+FIESTACADE ships no ROMs and no game code. Marquee artwork is scanned cabinet art
 belonging to its respective rights holders, included here for personal use on a
 single device.

@@ -1,5 +1,5 @@
 /*
- * main.cpp - MINIMAME launcher.
+ * main.cpp - FIESTACADE launcher.
  *
  * The medal has a sticky selection: once a game is picked it boots straight into
  * it, skipping this menu entirely, until someone deliberately comes back. So most

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# MINIMAME - build a multi-game arcade medal.
+# FIESTACADE - build a multi-game arcade medal.
 #
-#   ./minimame              what this build contains
-#   ./minimame build        artwork + partition table + firmware
-#   ./minimame flash [port] write it all to a connected medal
+#   ./fiestacade              what this build contains
+#   ./fiestacade build        artwork + partition table + firmware
+#   ./fiestacade flash [port] write it all to a connected medal
 #
-# Run ./minimame help for the rest.
+# Run ./fiestacade help for the rest.
 #
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -36,6 +36,12 @@ ensure_venv() {
 
 cmd_status()  { python3 tools/configure.py --check; }
 
+cmd_art() {
+    ensure_venv
+    say "fetching marquee art (from a third-party archive - see tools/fetch_marquees.py)"
+    "$VENV/bin/python" tools/fetch_marquees.py "$@"
+}
+
 cmd_games() {
     printf '\n  %sApproved games%s - drop the matching zip in roms/ to include one\n\n' "$c_bold" "$c_off"
     python3 - <<'PY'
@@ -52,20 +58,21 @@ PY
 
 cmd_build() {
     need_docker; ensure_venv
-    say "packing artwork"
+    say "artwork (text placeholders for anything without a real banner)"
+    "$VENV/bin/python" tools/make_placeholders.py
     "$VENV/bin/python" tools/pack_marquees.py | tail -3
     say "generating partition table"
     python3 tools/configure.py
     say "building firmware"
     docker run --rm -v "$PWD":/project -w /project "$IDF_IMAGE" \
         idf.py -B "$BUILD" -DIDF_TARGET=esp32c6 build 2>&1 | tail -4
-    ok "firmware at $BUILD/minimame.bin"
-    echo "   next: ./minimame flash"
+    ok "firmware at $BUILD/fiestacade.bin"
+    echo "   next: ./fiestacade flash"
 }
 
 cmd_flash() {
     local port="${1:-}"
-    [ -f "$BUILD/minimame.bin" ] || { warn "no firmware - run ./minimame build first"; exit 1; }
+    [ -f "$BUILD/fiestacade.bin" ] || { warn "no firmware - run ./fiestacade build first"; exit 1; }
     tools/flash_all.sh ${port:+"$port"}
 }
 
@@ -76,18 +83,18 @@ cmd_help() {
 
   MINIMAME - a multi-game arcade medal for the Waveshare ESP32-C6-LCD-1.69
 
-    ./minimame              what this build contains, and what it is missing
-    ./minimame games        the approved list, and which ROMs you have
-    ./minimame build        artwork + partition table + firmware
-    ./minimame flash [port] write everything to a connected medal
-    ./minimame clean        remove build output
+    ./fiestacade              what this build contains, and what it is missing
+    ./fiestacade games        the approved list, and which ROMs you have
+    ./fiestacade build        artwork + partition table + firmware
+    ./fiestacade flash [port] write everything to a connected medal
+    ./fiestacade clean        remove build output
 
   Getting started
 
-    1. Put ROM zips in roms/ using their MAME names (./minimame games lists them).
+    1. Put ROM zips in roms/ using their MAME names (./fiestacade games lists them).
        We ship no ROMs; finding them is up to you.
-    2. ./minimame build
-    3. ./minimame flash
+    2. ./fiestacade build
+    3. ./fiestacade flash
 
   A game appears in the menu only if its ROM is in roms/. Nothing else to edit -
   the partition table and the menu are both generated from what it finds.
@@ -101,6 +108,7 @@ case "${1:-status}" in
     games|list) cmd_games ;;
     build)      cmd_build ;;
     flash)      shift; cmd_flash "$@" ;;
+    art)        shift; cmd_art "$@" ;;
     clean)      cmd_clean ;;
     help|-h|--help) cmd_help ;;
     *) warn "unknown command: $1"; cmd_help; exit 1 ;;

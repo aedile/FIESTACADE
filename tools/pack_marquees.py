@@ -54,7 +54,10 @@ def main():
 
     entries, blobs, cur = [], [], data_off
     for rom in roms:
-        im = Image.open(os.path.join(SRC, rom + '.png')).convert('RGB')
+        art = os.path.join(SRC, rom + '.png')
+        if not os.path.exists(art):
+            art = os.path.join(SRC, '_placeholder', rom + '.png')   # generated text banner
+        im = Image.open(art).convert('RGB')
         s  = min(BOX_W / im.width, BOX_H / im.height)
         w, h = max(1, round(im.width * s)), max(1, round(im.height * s))
         im = im.resize((w, h), Image.LANCZOS)
