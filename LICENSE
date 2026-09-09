@@ -1,0 +1,31 @@
+FIESTACADE is released under the Zero-Clause BSD license (0BSD): no attribution,
+no notice preservation, no conditions. It is meant to be free for everyone.
+
+That covers the code written for this project: the launcher (main/), the shared
+components (components/display, components/imu, components/mqart,
+components/medalboot, components/medal_input, components/audio_hal), the build
+and asset tools (tools/), the host harness (host/), and the packed artwork
+tooling (lcd/).
+
+It does NOT cover, and cannot relax the terms of, the third-party emulator cores
+and libraries that individual games are built from, nor the game ROMs and
+marquee art, none of which are distributed here. Each game under games/ carries
+its own LICENSE and THIRD_PARTY_NOTICES.md, and the bundle as a whole is
+described in LICENSING.md at the repository root. The most important consequence:
+several cores are non-commercial only, so the assembled bundle may be shared
+freely but not sold. See LICENSING.md before you distribute.
+
+---
+
+Copyright (C) 2026 Jesse Castro
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.

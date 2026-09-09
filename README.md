@@ -167,6 +167,16 @@ partition label, so adding a game never recompiles the launcher.
 
 ---
 
+## Licensing
+
+FIESTACADE's own code is released under the Zero-Clause BSD license (`LICENSE`) -
+free for everyone, no conditions. It is **not for sale**: most games embed Marat
+Fayzullin's non-commercial Z80 core, so the assembled bundle may be shared freely
+but not sold, and the four 6809 games are GPL-3.0. No game ROMs or marquee art
+are distributed here; you supply those. See `LICENSING.md` for the full picture,
+and each game's own `LICENSE` / `THIRD_PARTY_NOTICES.md` for the authoritative
+per-game terms.
+
 ## Repository layout
 
 - `games/` — every game's source, vendored in so one clone builds everything. Each
