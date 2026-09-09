@@ -92,6 +92,7 @@ Per-game, the tilt and the BOOT action are:
 | Asteroids | `asteroid` | twist = rotate, tip away = thrust | fire (hold 0.7 s: hyperspace) |
 | Tempest | `tempest` | claw around the rim | fire (short 2nd press: superzapper) |
 | Gyruss | `gyruss` | move around the ring | fire |
+| Time Pilot | `timeplt` | 8-way: twist and tip to point the plane | fire |
 | Arkanoid | `arkanoidu` | paddle, absolute (±32° sweep) | fire (once the laser is fitted) |
 | Star Wars | `starwars` | flight yoke — twist yaws, tip pitches | fire (also starts, in free play) |
 | Pole Position | `polepos` | steer like a wheel | — (throttle is automatic; BOOT taps shift gear) |

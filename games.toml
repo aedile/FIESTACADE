@@ -133,6 +133,12 @@ project = "BIGTOP"
 slot_kb = 512
 
 [[game]]
+rom = "timeplt"
+title = "Time Pilot"
+project = "CHRONO"
+slot_kb = 512
+
+[[game]]
 rom = "llander"
 title = "Lunar Lander"
 project = "REGOLITH"

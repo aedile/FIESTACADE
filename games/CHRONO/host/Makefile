@@ -1,0 +1,7 @@
+CC ?= cc
+CFLAGS ?= -O2 -Wall -Wno-unused-function -Wno-unused-variable -DLSB_FIRST -I../core -I../core/z80 -I../main/roms
+SRCS = harness.c ../core/timeplt.c ../core/timeplt_video.c ../core/ay8910.c ../core/z80/Z80.c
+harness: $(SRCS) ../core/*.h ../main/roms/timeplt_roms.h
+	$(CC) $(CFLAGS) -o $@ $(SRCS) -lm
+clean:
+	rm -f harness
