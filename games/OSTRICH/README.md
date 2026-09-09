@@ -4,7 +4,8 @@ Joust (Williams, 1982) on the Waveshare ESP32-C6-LCD-1.69 Fiesta medal: the
 6809 CPU board with its Special Chip 1 blitter and 4-bit bitmap, and the
 Williams sound board's 6808 making every sound in software for an 8-bit DAC.
 The screen is 292x240; the medal shows the middle 280 columns squeezed to its
-240, with a bar above and below. One of the FIESTACADE games; see the
+240 - per row, dropping one of a pair of equal pixels in every seven, so the
+lettering survives - with a bar above and below. One of the FIESTACADE games; see the
 top-level README for how a build is put together.
 
 Controls: twist left and right to run, and BOOT flaps. PWR is a coin (and then

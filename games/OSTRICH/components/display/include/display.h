@@ -61,6 +61,10 @@ void display_write_preswapped(const uint16_t *data, uint32_t len);
  */
 void display_wait_done(void);
 
+/* Convert straight into a DMA buffer: acquire, fill up to 28 rows, submit with the pixel count. */
+uint16_t *display_acquire_buffer(void);
+void display_submit_buffer(uint32_t len);
+
 /**
  * Set the drawing window
  * @param x X coordinate (0-239)

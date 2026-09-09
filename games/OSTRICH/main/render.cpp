@@ -3,12 +3,14 @@
  *
  * The cabinet's monitor is the normal way up, so the picture is landscape and the panel is
  * portrait: 240 rows of it go on at one to one with a 20-row bar above and below, and the
- * middle 280 of its 292 columns are squeezed to 240 by six to seven. Rather than drop one
- * column in seven - which takes whole strokes out of the lettering - the fourth and fifth of
- * every seven are averaged, through a table of blended palette pairs.
+ * middle 280 of its 292 columns are squeezed to 240 by six to seven. Dropping a fixed column
+ * in seven takes whole strokes out of the lettering, and averaging a fixed pair leaves them
+ * half-bright, which reads the same. So the choice is made per row and per group of seven:
+ * the first adjacent pair of equal pixels, looked for from the middle outwards, loses one of
+ * the two - nothing is lost, there is always such a pair in text and in most of the artwork -
+ * and only a group with no equal pair at all has its middle pair averaged.
  *
- * The frame arrives as the hardware keeps it, two pixels a byte running down each column,
- * so a panel row is a walk across 146 column buffers.
+ * The frame arrives as the hardware keeps it, two pixels a byte running down each column.
  */
 #include "render.h"
 #include "joust.h"
@@ -16,6 +18,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_attr.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -23,7 +26,7 @@
 #include <stdlib.h>
 
 static const char *TAG = "RENDER";
-#define ROWS_PER_CHUNK 14
+#define ROWS_PER_CHUNK 28
 #define NUM_FB 2
 #define PIC_H JO_SCREEN_H                              /* 240 */
 #define TOP_BAR ((DISPLAY_HEIGHT - PIC_H) / 2)         /* 20 */
@@ -32,14 +35,10 @@ static const char *TAG = "RENDER";
 typedef struct { uint8_t *snap; uint16_t pal[JO_PALETTE_SIZE]; } frame_t;
 static frame_t frames[NUM_FB];
 static QueueHandle_t free_q, frame_q;
-static uint16_t *chunk;
 static uint16_t pal_swapped[JO_PALETTE_SIZE];
 static uint16_t blend_swapped[JO_PALETTE_SIZE * JO_PALETTE_SIZE];   /* indexed by (left << 4) | right */
 static uint16_t last_pal[JO_PALETTE_SIZE];
 static bool have_tables;
-static uint16_t col_ofs[DISPLAY_WIDTH];                /* panel column -> its column buffer's offset */
-static uint8_t col_shift[DISPLAY_WIDTH];               /* 4 for an even visible column, 0 for an odd */
-static uint8_t col_blend[DISPLAY_WIDTH];               /* 0 plain, 1 both pixels in this byte, 2 straddles the next column */
 static uint32_t frames_drawn, frames_dropped;
 static uint64_t busy_us;
 
@@ -61,26 +60,40 @@ static void build_tables(const uint16_t *pal)
 }
 
 /*
- * A chunk of rows, column by column: each panel column is a run of consecutive bytes in one
- * column buffer, so the inner loop is a load, a shift, a table lookup and a strided store.
+ * A chunk of rows, one group of seven visible columns at a time: the group's four column
+ * buffers are read as consecutive runs, each row's eight pens packed into a word, and the
+ * equal pair found by nibble arithmetic rather than six compares.
  */
-static void convert_rows(const uint8_t *snap, int y0, int rows, uint16_t *out)
+static uint8_t drop_choice[64];                        /* six equal-pair flags -> pen to drop, or 7 */
+static uint16_t group_col[40];                         /* the group's first column buffer, in bytes */
+static uint8_t group_odd[40];                          /* 1: its first pixel is a low nibble */
+
+static void IRAM_ATTR convert_rows(const uint8_t *snap, int y0, int rows, uint16_t *out)
 {
-    for (int px = 0; px < DISPLAY_WIDTH; px++) {
-        const uint8_t *col = snap + col_ofs[px] + y0;
-        uint16_t *d = out + px;
-        int sh = col_shift[px];
-        switch (col_blend[px]) {
-            case 0:
-                for (int r = 0; r < rows; r++, d += DISPLAY_WIDTH) *d = pal_swapped[(col[r] >> sh) & 0x0f];
-                break;
-            case 1:                                        /* even column: this byte holds both */
-                for (int r = 0; r < rows; r++, d += DISPLAY_WIDTH) *d = blend_swapped[col[r]];
-                break;
-            default: {                                     /* odd column: low nibble here, high nibble next door */
-                const uint8_t *nxt = col + JO_SCREEN_H;
-                for (int r = 0; r < rows; r++, d += DISPLAY_WIDTH) *d = blend_swapped[((col[r] & 0x0f) << 4) | (nxt[r] >> 4)];
-                break;
+    for (int g = 0; g < 40; g++) {
+        const uint8_t *c0 = snap + group_col[g] + y0, *c1 = c0 + JO_SCREEN_H, *c2 = c1 + JO_SCREEN_H, *c3 = c2 + JO_SCREEN_H;
+        int odd = group_odd[g];
+        uint16_t *d = out + g * 6;
+        for (int r = 0; r < rows; r++, d += DISPLAY_WIDTH) {
+            uint32_t w = ((uint32_t)c0[r] << 24) | ((uint32_t)c1[r] << 16) | ((uint32_t)c2[r] << 8) | c3[r];
+            if (odd) w <<= 4;                          /* pen 0 at the top nibble either way */
+            /* a zero nibble in x marks a pair of equal neighbours; gather the six flags */
+            uint32_t x = w ^ (w << 4);
+            uint32_t t = x | (x >> 1); t |= t >> 2;
+            uint32_t z = ~t & 0x11111111u;
+            unsigned m = ((z >> 28) & 1) | ((z >> 23) & 2) | ((z >> 18) & 4) | ((z >> 13) & 8) | ((z >> 8) & 16) | ((z >> 3) & 32);
+            int j = drop_choice[m];
+            if (j == 7) {
+                d[0] = pal_swapped[w >> 28]; d[1] = pal_swapped[(w >> 24) & 15]; d[2] = pal_swapped[(w >> 20) & 15];
+                d[3] = blend_swapped[(w >> 12) & 0xff];
+                d[4] = pal_swapped[(w >> 8) & 15]; d[5] = pal_swapped[(w >> 4) & 15];
+            } else {
+                /* close the gap: keep the pens above j, pull the ones below up a nibble */
+                uint32_t keep = 0xffffffffu << (32 - 4 * j);
+                if (j == 0) keep = 0;
+                uint32_t v = (w & keep) | ((w << 4) & ~keep);
+                d[0] = pal_swapped[v >> 28]; d[1] = pal_swapped[(v >> 24) & 15]; d[2] = pal_swapped[(v >> 20) & 15];
+                d[3] = pal_swapped[(v >> 16) & 15]; d[4] = pal_swapped[(v >> 12) & 15]; d[5] = pal_swapped[(v >> 8) & 15];
             }
         }
     }
@@ -92,6 +105,7 @@ static void present(const frame_t *f)
     display_set_window(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
     for (int row = 0; row < DISPLAY_HEIGHT; row += ROWS_PER_CHUNK) {
         int rows = (row + ROWS_PER_CHUNK <= DISPLAY_HEIGHT) ? ROWS_PER_CHUNK : (DISPLAY_HEIGHT - row);
+        uint16_t *chunk = display_acquire_buffer();
         int y0 = row - TOP_BAR, y1 = y0 + rows;            /* picture rows covered by this chunk */
         if (y1 <= 0 || y0 >= PIC_H) {
             memset(chunk, 0, rows * DISPLAY_WIDTH * sizeof(uint16_t));
@@ -102,7 +116,7 @@ static void present(const frame_t *f)
             int a = y0 < 0 ? 0 : y0, b = y1 > PIC_H ? PIC_H : y1;
             convert_rows(f->snap, a, b - a, chunk + (a - y0) * DISPLAY_WIDTH);
         }
-        display_write_preswapped(chunk, rows * DISPLAY_WIDTH);
+        display_submit_buffer(rows * DISPLAY_WIDTH);
     }
     display_wait_done();
 }
@@ -123,15 +137,17 @@ static void render_task(void *arg)
 
 void render_init(void)
 {
-    /* seven visible columns become six panel columns: 0 1 2 (3+4) 5 6 */
-    for (int px = 0; px < DISPLAY_WIDTH; px++) {
-        int group = px / 6, k = px % 6;
-        int x = LEFT_TRIM + group * 7 + (k < 3 ? k : k + 1);
-        col_ofs[px] = (uint16_t)((x >> 1) * JO_SCREEN_H);
-        col_shift[px] = (x & 1) ? 0 : 4;
-        col_blend[px] = (k != 3) ? 0 : ((x & 1) ? 2 : 1);
+    /* which pen to drop for each pattern of equal neighbours: the middle pairs first */
+    static const uint8_t order[6] = { 3, 2, 4, 1, 5, 0 };
+    for (int m = 0; m < 64; m++) {
+        drop_choice[m] = 7;
+        for (int k = 0; k < 6; k++) if (m & (1 << order[k])) { drop_choice[m] = order[k]; break; }
     }
-    chunk = (uint16_t *)heap_caps_malloc(ROWS_PER_CHUNK * DISPLAY_WIDTH * sizeof(uint16_t), MALLOC_CAP_8BIT);
+    for (int g = 0; g < 40; g++) {
+        int x0 = LEFT_TRIM + g * 7;
+        group_col[g] = (uint16_t)((x0 >> 1) * JO_SCREEN_H);
+        group_odd[g] = (uint8_t)(x0 & 1);
+    }
     free_q = xQueueCreate(NUM_FB, sizeof(frame_t *));
     frame_q = xQueueCreate(NUM_FB, sizeof(frame_t *));
     for (int i = 0; i < NUM_FB; i++) {
@@ -140,9 +156,8 @@ void render_init(void)
         frame_t *f = &frames[i];
         xQueueSend(free_q, &f, 0);
     }
-    if (!chunk) { ESP_LOGE(TAG, "chunk allocation failed"); abort(); }
     xTaskCreate(render_task, "render", 4096, nullptr, 6, nullptr);
-    ESP_LOGI(TAG, "render task started (%dx%d, squeezed 7:6, %d-row bars)", JO_SCREEN_W, JO_SCREEN_H, TOP_BAR);
+    ESP_LOGI(TAG, "render task started (%dx%d, squeezed 7:6 adaptively, %d-row bars)", JO_SCREEN_W, JO_SCREEN_H, TOP_BAR);
 }
 
 uint8_t *render_acquire(void)

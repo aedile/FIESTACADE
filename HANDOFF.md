@@ -36,13 +36,22 @@
 > **Space Invaders** is twist to move, as Galaxian is, with the same
 > thresholds; "tilt" in the earlier report was a misreading of the control.
 >
-> **Frame-loop lessons, applied to Moon Patrol, Mario Bros and Tapper:** the
+> **Joust's lettering:** its 292 columns become the panel's 240 by dropping
+> one of a pair of equal pixels in every seven, chosen per row, and only a
+> group with no equal pair has its middle pair averaged. A fixed drop or a
+> fixed blend turned "SYSTEMS GO" into "SYSIEMS 30"; a host replica of the
+> medal's conversion (`games/OSTRICH/host/out/squeeze2.png` shows the
+> before and after) and a pixel-for-pixel check of the packed-nibble code
+> against a plain reference are how it was verified.
+>
+> **Frame-loop lessons, applied to Moon Patrol, Mario Bros, Tapper and Joust:** the
 > render task's palette conversion costs about 5 ms a frame and preempts the
 > main loop; an IMU read is about 1.8 ms; a one-tick sleep under tickless idle
 > stretches. Converting straight into 28-row DMA buffers, sleeping only when no
 > frame is due, and polling the IMU every 33 ms took Mario Bros from one frame
-> in six skipped to none and Tapper from one in twenty to none. The other games
-> were already drawing every frame.
+> in six skipped to none and Tapper from one in twenty to none; Joust needed
+> them once its renderer grew the per-row squeeze. The other games were already
+> drawing every frame.
 >
 > **Not ported, and why:** Elevator Action needs two Z80s at 4 and 3 MHz, a
 > 68705, four AYs and a three-layer video with sprite collision - about 130% of

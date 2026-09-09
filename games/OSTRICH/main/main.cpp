@@ -72,8 +72,12 @@ extern "C" void app_main(void)
         }
         int64_t ta = esp_timer_get_time();
         audio_update();
-        t_audio += esp_timer_get_time() - ta;
-        vTaskDelay(1);
+        int64_t tb = esp_timer_get_time();
+        t_audio += tb - ta;
+        /* sleep a tick only when the next frame is not about due: a tick under tickless idle
+         * can stretch past a millisecond */
+        if (owed_us + (tb - lfr_us) < FRAME_US - 2000) vTaskDelay(1);
+        else taskYIELD();
         if (now - lfr_report >= 5000000) {
             ESP_LOGI(TAG, "5s: frames %lu drawn %lu skipped %lu dropped %lu; ms/s: emu %llu submit %llu render %llu audio %llu; heap %lu; pc %04X snd %04X",
                      (unsigned long)frames, (unsigned long)render_frames_drawn(), (unsigned long)skipped, (unsigned long)render_frames_dropped(),
