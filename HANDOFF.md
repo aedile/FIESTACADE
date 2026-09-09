@@ -91,10 +91,17 @@
 > and left alone - its one-in-sixteen drop barely touches text.
 >
 > **Gyruss still draws only about half its frames** (160 of 300 per five
-> seconds). The frame-loop fix that smoothed Moon Patrol/Mario/Tapper/Joust was
-> tried and reverted here: Gyruss is compute-bound (emulation + audio eat ~90%
-> of each second), so it needs core optimisation, not the render pass. Left as
-> a decision - it predates this session.
+> seconds). Profiled it on the host (9 Sep): its four-CPU emulation - two Z80s,
+> an 8039 MCU, and five AY-3-8910s' bookkeeping - is 96% of the core cost
+> (60 us/frame on x86); the audio and video rasterisation are negligible
+> (0.5 and 1.7 us). So the binding constraint on the medal is the ~750 ms/s
+> spent emulating those CPUs, over half the frame budget before the panel
+> rotation and audio HAL. The frame-loop render fix that smoothed the other
+> games was tried and reverted (it cost heap and did not touch the real
+> bottleneck). Making Gyruss full-rate means speeding up the Z80 emulation,
+> which is the Fayzullin core shared across most of the bundle - a real,
+> risky optimisation that would touch many games. Left as a decision; it
+> predates this session.
 >
 > **Board notes worth not re-deriving** are in each project's `core/*.c` header
 > comments and `THIRD_PARTY_NOTICES.md`; the ones that cost real time are:
