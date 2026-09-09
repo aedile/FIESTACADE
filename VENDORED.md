@@ -23,3 +23,11 @@ Vendored at FIESTACADE commit time on 2026-09-09.
 | TRENCHRUNNER | https://github.com/aedile/TRENCHRUNNER.git | main | 2c5a6f2 |
 | VAUS | https://github.com/aedile/VAUS.git | main | 05a03b7 |
 | WALKERRUN | https://github.com/aedile/TRENCHRUNNER.git | esb | 4001d5a |
+
+## In-tree only
+
+These games were written inside FIESTACADE on 9 September 2026 and have no
+upstream repo; this tree is their only home: `PHALANX` (Space Invaders),
+`ARMADA` (Galaxian), `REGOLITH` (Lunar Lander), `PLUMBER` (Mario Bros),
+`BIGTOP` (Mr. Do!), `CHRONO` (Time Pilot), `GRIDDLE` (Burger Time), `KEG` (Root
+Beer Tapper), `OSTRICH` (Joust), `BUGGY` (Moon Patrol).

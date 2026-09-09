@@ -1,5 +1,63 @@
 # MINIMAME — handoff
 
+> ## Status, 9 September 2026 — ten more games, all on hardware
+>
+> Read this box first; the one below it is the 6 September state and the text
+> after that is the original plan.
+>
+> **Ports written this session**, each host-verified with its `host/harness`
+> (frames and WAV) and then run on the medal at full frame rate by flashing it
+> over a spare slot and force-booting it through NVS (the trick is in the
+> memory notes and `tools/`): Space Invaders (`PHALANX`), Galaxian (`ARMADA`),
+> Lunar Lander (`REGOLITH`), Mario Bros (`PLUMBER`), Mr. Do! (`BIGTOP`), Time
+> Pilot (`CHRONO`), Burger Time (`GRIDDLE`), Root Beer Tapper (`KEG`), Joust
+> (`OSTRICH`), Moon Patrol (`BUGGY`). Two new CPU cores came with them: a 6800
+> family core (`OSTRICH/core/m6800.h`, also the 6803 in `BUGGY`) and an SN76489
+> (`BIGTOP`). Every one is in `games.toml` with a measured slot size and a row
+> in `README.md`'s control table.
+>
+> **The medal is full.** Sixteen of sixteen slots, 15.44 of 16 MB, holding the
+> build from before this session's later ports (Pac-Man and Ms. Pac-Man share
+> one image now, which is what made room for Space Invaders, Galaxian and Lunar
+> Lander). Mario Bros, Mr. Do!, Time Pilot, Burger Time, Tapper, Joust and Moon
+> Patrol are catalogued but not flashed: `./fiestacade pick` chooses which
+> sixteen go on, and any change to the list shifts every slot, so that is a
+> full reflash. Which games to drop is your call; nothing was dropped for you.
+>
+> **Fixed and flashed on the medal:** Pole Position's automatic accelerator
+> (the game samples the pedal as released while it leaves its self-test, so the
+> pedal is held only from eight seconds after boot); Pac-Man and Ms. Pac-Man's
+> crunchy sound and hum (the wave generator is now oversampled four times and
+> the audio HAL keeps a pending buffer instead of over-rendering at boot); the
+> Star Wars autopilot only shoots in the trench when the exhaust port is ahead;
+> the Street Fighter II clip loops again (its player waited for an audio drain
+> that never comes when muted).
+>
+> **Space Invaders** is twist to move, as Galaxian is, with the same
+> thresholds; "tilt" in the earlier report was a misreading of the control.
+>
+> **Frame-loop lessons, applied to Moon Patrol and Mario Bros:** the render
+> task's palette conversion costs about 5 ms a frame and preempts the main
+> loop; an IMU read is about 1.8 ms; a one-tick sleep under tickless idle
+> stretches. Converting straight into 28-row DMA buffers, sleeping only when no
+> frame is due, and polling the IMU every 33 ms took Mario Bros from one frame
+> in six skipped to none. The other games did not need it.
+>
+> **Not ported, and why:** Elevator Action needs two Z80s at 4 and 3 MHz, a
+> 68705, four AYs and a three-layer video with sprite collision - about 130% of
+> a frame on this chip by the Moon Patrol measurements. Marble Madness and
+> Paperboy are 68010 and T11 boards, out of the question. Their zips stay in
+> `roms/` unused.
+>
+> **Board notes worth not re-deriving** are in each project's `core/*.c` header
+> comments and `THIRD_PARTY_NOTICES.md`; the ones that cost real time are:
+> Joust's ROM bank only covers reads, and its empty CMOS makes the program wait
+> for the ADVANCE switch, which the emulator presses; Tapper's Z80 must start
+> with IX/IY/SP/AF at 0xFFFF; Burger Time's CPU-7 opcode scramble applies only
+> after a write and when the address has bits 2 and 8 set; Mario's sound MCU
+> ROM needs the reset-vector patch MAME documents; Mr. Do!'s hardware scans x
+> from the right.
+
 > ## Status, 6 September 2026 — it has now run on hardware
 >
 > The launcher boots on a medal, finds its artwork and reports **"14 games in the
