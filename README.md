@@ -82,6 +82,7 @@ Per-game, the tilt and the BOOT action are:
 | Space Invaders | `invaders` | move the cannon L/R | fire |
 | Lunar Lander | `llander` | twist = rotate, tip away = throttle (analogue) | abort |
 | Dig Dug | `digdug` | move L/R (dominant axis) | pump |
+| Mr. Do! | `mrdo` | dig in 4 directions (dominant axis) | throw the power ball |
 | Donkey Kong | `dkong` | run / climb (dominant axis) | jump |
 | Mario Bros. | `mario` | run L/R | jump |
 | Frogger | `frogger` | hop L/R (dominant axis) | hop forward |

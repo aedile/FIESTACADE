@@ -127,6 +127,12 @@ project = "PLUMBER"
 slot_kb = 512
 
 [[game]]
+rom = "mrdo"
+title = "Mr. Do!"
+project = "BIGTOP"
+slot_kb = 512
+
+[[game]]
 rom = "llander"
 title = "Lunar Lander"
 project = "REGOLITH"

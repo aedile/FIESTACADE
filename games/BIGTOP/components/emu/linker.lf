@@ -1,0 +1,6 @@
+[mapping:emu]
+archive: libemu.a
+entries:
+    mrdo (noflash)
+    mrdo_video (noflash)
+    Z80 (noflash)
