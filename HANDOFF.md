@@ -16,13 +16,16 @@
 > (`BIGTOP`). Every one is in `games.toml` with a measured slot size and a row
 > in `README.md`'s control table.
 >
-> **The medal is full.** Sixteen of sixteen slots, 15.44 of 16 MB, holding the
-> build from before this session's later ports (Pac-Man and Ms. Pac-Man share
-> one image now, which is what made room for Space Invaders, Galaxian and Lunar
-> Lander). Mario Bros, Mr. Do!, Time Pilot, Burger Time, Tapper, Joust and Moon
-> Patrol are catalogued but not flashed: `./fiestacade pick` chooses which
-> sixteen go on, and any change to the list shifts every slot, so that is a
-> full reflash. Which games to drop is your call; nothing was dropped for you.
+> **The medal now carries the test build Jesse asked for** (morning of 9
+> September): the seven new games plus Street Fighter II and Pac-Man / Ms.
+> Pac-Man, filled out with Pole Position, Star Wars, Gyruss, Galaga, Dig Dug
+> and Donkey Kong - 15 of 16 slots, 15.81 of 16 MB, nothing else fits.
+> `selection.txt` (gitignored) holds that list; `./fiestacade pick` changes
+> it, and any change to the list shifts every slot and needs a full reflash.
+> Off the medal for now: Centipede, Frogger, Tempest, Asteroids, Missile
+> Command, Lunar Lander, Galaxian, Space Invaders. The final pick is still to
+> be made. First play found Burger Time's burger pieces missing (only half
+> the character set was decoded); fixed and reflashed in place.
 >
 > **Fixed and flashed on the medal:** Pole Position's automatic accelerator
 > (the game samples the pedal as released while it leaves its self-test, so the
@@ -62,8 +65,7 @@
 > Paperboy are 68010 and T11 boards, out of the question. Their zips stay in
 > `roms/` unused.
 >
-> **The medal, as left, verified:** its flash holds the same 16-game build as
-> before tonight. Galaxian's and Gyruss's slots were used to test the new
+> **Earlier that night, before the reflash:** the medal held the previous 16-game build. Galaxian's and Gyruss's slots were used to test the new
 > games and were written back from the projects' `build_docker` binaries; NVS
 > selects Gyruss, as it did. After you plugged it back in it booted the
 > launcher ("17 games in the carousel") and chain-booted Gyruss from the
