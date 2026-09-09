@@ -13,6 +13,7 @@
 // We run the accumulator at AUDIO_SAMPLE_RATE instead, scaled up by 2^12 into a
 // 32-bit counter so the wave index is simply the top 5 bits (>> 27).
 #define WSG_CLOCK_HZ 96000
+#define WSG_OVERSAMPLE 4      // sub-samples averaged per output sample (48 must divide by it)
 static const uint32_t WSG_STEP_SCALE =
     (uint32_t)(((uint64_t)WSG_CLOCK_HZ * 4096 + AUDIO_SAMPLE_RATE / 2) / AUDIO_SAMPLE_RATE);
 
@@ -104,30 +105,33 @@ void wsg_render(int16_t *buffer, uint32_t samples)
     const uint32_t step1 = snd_freq[1] * WSG_STEP_SCALE;
     const uint32_t step2 = snd_freq[2] * WSG_STEP_SCALE;
 
+    /*
+     * The real chip steps its 32-sample waves at 96 kHz; we output at 20 kHz. Sampling the
+     * wave once per output sample aliases badly - the high notes come out as a crunchy
+     * buzz - so take WSG_OVERSAMPLE points per output sample and average them. That is a
+     * box filter at the sub-sample rate, which is enough to take the edge off, and it costs
+     * three table lookups per point.
+     */
+    const uint32_t sub0 = step0 / WSG_OVERSAMPLE;
+    const uint32_t sub1 = step1 / WSG_OVERSAMPLE;
+    const uint32_t sub2 = step2 / WSG_OVERSAMPLE;
+    const int8_t *w0 = snd_wave[0], *w1 = snd_wave[1], *w2 = snd_wave[2];
+    const int32_t vol0 = snd_volume[0], vol1 = snd_volume[1], vol2 = snd_volume[2];
+
     for (uint32_t i = 0; i < samples; i++) {
-        int32_t v = 0;
-
-        // Add up all three wave channels; wave index = top 5 bits of the counter
-        if (snd_volume[0]) {
-            v += snd_volume[0] * snd_wave[0][snd_cnt[0] >> 27];
-        }
-        if (snd_volume[1]) {
-            v += snd_volume[1] * snd_wave[1][snd_cnt[1] >> 27];
-        }
-        if (snd_volume[2]) {
-            v += snd_volume[2] * snd_wave[2][snd_cnt[2] >> 27];
+        int32_t acc = 0;
+        for (int k = 0; k < WSG_OVERSAMPLE; k++) {
+            // wave index = top 5 bits of the counter
+            acc += vol0 * w0[snd_cnt[0] >> 27] + vol1 * w1[snd_cnt[1] >> 27] + vol2 * w2[snd_cnt[2] >> 27];
+            snd_cnt[0] += sub0;
+            snd_cnt[1] += sub1;
+            snd_cnt[2] += sub2;
         }
 
-        // v is roughly +/- 360 (3 voices * 15 vol * 8 wave amplitude); scale to 16-bit
-        v = v * 48;
+        // acc/OVERSAMPLE is roughly +/- 360 (3 voices * 15 vol * 8 wave amplitude); scale to 16-bit
+        int32_t v = acc * (48 / WSG_OVERSAMPLE);
         if (v > 32767) v = 32767;
         if (v < -32768) v = -32768;
-
         buffer[i] = (int16_t)v;
-
-        // Advance phase counters
-        snd_cnt[0] += step0;
-        snd_cnt[1] += step1;
-        snd_cnt[2] += step2;
     }
 }
