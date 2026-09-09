@@ -9,8 +9,8 @@
 #include "btime_internal.h"
 #include <string.h>
 
-static uint8_t chr_px[512 * 64];     /* 3bpp characters */
-static uint8_t spr_px[128 * 256];    /* 3bpp 16x16 sprites, from the same ROMs */
+static uint8_t chr_px[1024 * 64];    /* 3bpp characters: 8 KB a plane is 1024 of them */
+static uint8_t spr_px[256 * 256];    /* 3bpp 16x16 sprites, from the same ROMs */
 static uint8_t bg_px[64 * 256];      /* 3bpp 16x16 background tiles */
 
 static inline uint8_t plane_bits(const uint8_t *rom, int plane_size, int byte, int bit)
@@ -23,12 +23,12 @@ static inline uint8_t plane_bits(const uint8_t *rom, int plane_size, int byte, i
 void bt_video_init(void)
 {
     /* characters: 8 bytes a plane, planes a third of the ROM apart, the last third highest */
-    for (int t = 0; t < 512; t++)
+    for (int t = 0; t < 1024; t++)
         for (int y = 0; y < 8; y++)
             for (int x = 0; x < 8; x++)
                 chr_px[(t << 6) | (y << 3) | x] = plane_bits(bt_roms.gfx1, 0x2000, t * 8 + y, 7 - x);
     /* 16x16 tiles: 32 bytes a plane; the left eight pixels come from the second sixteen bytes */
-    for (int t = 0; t < 128; t++)
+    for (int t = 0; t < 256; t++)
         for (int y = 0; y < 16; y++)
             for (int x = 0; x < 16; x++)
                 spr_px[(t << 8) | (y << 4) | x] = plane_bits(bt_roms.gfx1, 0x2000, t * 32 + y + (x < 8 ? 16 : 0), 7 - (x & 7));
@@ -112,7 +112,7 @@ void bt_render(uint8_t *fb)
         if (!(s[0] & 0x01)) continue;
         int x = 240 - s[0x60], y = 240 - s[0x40] - 1;
         int flipx = s[0] & 0x04, flipy = s[0] & 0x02;
-        const uint8_t *px = &spr_px[(s[0x20] & 0x7f) << 8];
+        const uint8_t *px = &spr_px[s[0x20] << 8];
         draw_tile16(fb, px, x, y, flipx, flipy, 0, 0);
         draw_tile16(fb, px, x, y + 256, flipx, flipy, 0, 0);     /* and again for the wrap */
     }
