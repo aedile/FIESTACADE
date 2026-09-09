@@ -1,0 +1,7 @@
+[mapping:emu]
+archive: libemu.a
+entries:
+    mario (noflash)
+    mario_video (noflash)
+    mario_sound (noflash)
+    Z80 (noflash)

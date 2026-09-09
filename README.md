@@ -83,6 +83,7 @@ Per-game, the tilt and the BOOT action are:
 | Lunar Lander | `llander` | twist = rotate, tip away = throttle (analogue) | abort |
 | Dig Dug | `digdug` | move L/R (dominant axis) | pump |
 | Donkey Kong | `dkong` | run / climb (dominant axis) | jump |
+| Mario Bros. | `mario` | run L/R | jump |
 | Frogger | `frogger` | hop L/R (dominant axis) | hop forward |
 | Rally-X | `rallyx` | drive L/R | lay a smoke screen |
 | Centipede | `centiped` | trackball L/R (angle = speed) | fire |

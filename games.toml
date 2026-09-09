@@ -121,6 +121,12 @@ slot_kb = 384
 # portrait panel and looped. The clip lives in a data partition of its own, sized here;
 # the player is 336 KB. Pack a clip with games/HADOUKEN/tools/pack_media.py.
 [[game]]
+rom = "mario"
+title = "Mario Bros."
+project = "PLUMBER"
+slot_kb = 512
+
+[[game]]
 rom = "llander"
 title = "Lunar Lander"
 project = "REGOLITH"
