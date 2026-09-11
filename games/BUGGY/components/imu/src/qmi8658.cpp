@@ -25,6 +25,7 @@ static const char *TAG = "QMI8658";
 #define REG_CTRL7           0x08
 #define REG_CTRL8           0x09
 #define REG_CTRL9           0x0A
+#define REG_RESET           0x60
 #define REG_STATUS0         0x2E
 #define REG_STATUS1         0x2F
 #define REG_ACCEL_X_L       0x35
@@ -69,14 +70,27 @@ bool qmi8658_init(void)
 
     ESP_LOGI(TAG, "Initializing QMI8658 IMU");
 
-    // Verify WHO_AM_I register
+    /*
+     * Verify WHO_AM_I - and not just once. The chip is not reset when the ESP is (a reset
+     * mid-transaction, which every flash and every chain-boot can be, leaves its bus state
+     * wherever it was), and about one boot in eight the first read came back as 0x38 instead
+     * of 0x05. Giving up there meant a whole game with no tilt. So: on a wrong answer, soft
+     * reset the chip (RESET register 0x60, value 0xB0, 15 ms to come back), and ask again.
+     */
     uint8_t who_am_i = 0;
-    esp_err_t ret = qmi8658_read_reg(REG_WHO_AM_I, &who_am_i);
+    esp_err_t ret = ESP_FAIL;
+    for (int attempt = 0; attempt < 5; attempt++) {
+        ret = qmi8658_read_reg(REG_WHO_AM_I, &who_am_i);
+        if (ret == ESP_OK && who_am_i == WHO_AM_I_VALUE) break;
+        ESP_LOGW(TAG, "WHO_AM_I attempt %d: %s, got 0x%02X (want 0x%02X) - resetting the chip",
+                 attempt + 1, esp_err_to_name(ret), who_am_i, WHO_AM_I_VALUE);
+        qmi8658_write_reg(REG_RESET, 0xB0);
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read WHO_AM_I: %s", esp_err_to_name(ret));
         return false;
     }
-
     if (who_am_i != WHO_AM_I_VALUE) {
         ESP_LOGE(TAG, "WHO_AM_I mismatch: got 0x%02X, expected 0x%02X", 
                  who_am_i, WHO_AM_I_VALUE);
@@ -116,12 +130,12 @@ bool qmi8658_init(void)
     qmi8658_read_reg(REG_STATUS1, &status);
     ESP_LOGI(TAG, "STATUS1=0x%02X after enable", status);
 
-    // Do a test read
+    // Do a test read (the driver has to count as initialised first, or the read is stubbed to zero)
+    imu_initialized = true;
     int16_t tx, ty, tz;
     qmi8658_read_accel(&tx, &ty, &tz);
     ESP_LOGI(TAG, "Test read: x=%d y=%d z=%d", tx, ty, tz);
 
-    imu_initialized = true;
     ESP_LOGI(TAG, "QMI8658 initialized (±2g scale, 470Hz)");
 
     return true;
