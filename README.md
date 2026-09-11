@@ -71,6 +71,12 @@ buttons do the rest.
 > Sound-off (mute) and back-to-menu are the same gesture everywhere. Picking a
 > game from the menu is a button *hold*; a knock won't do it.
 
+> **The tilt centre is wherever you are holding the medal when you press coin**
+> (and again at start). So hold it the way you mean to play before you press.
+> If one direction stops registering mid-game, press coin again in your
+> playing posture and it re-centres. A medal lying flat on a table is not
+> "held" and its tilt is ignored until it is picked up.
+
 Per-game, the tilt and the BOOT action are:
 
 | Game | ROM | Tilt does | BOOT does |
