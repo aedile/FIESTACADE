@@ -54,17 +54,27 @@ static bool read_angles(float *lr, float *ud)
     int16_t ax, ay, az;
     cfg.read_accel(&ax, &ay, &az);
     float in_plane = sqrtf((float)ax * ax + (float)ay * ay);
-    *lr = atan2f((float)ay, (float)ax) * 57.2958f;
     *ud = atan2f((float)az, in_plane) * 57.2958f;
     /*
-     * Held up, not lying down. The limit used to be 40 degrees off vertical, which sounds
-     * generous and is not: a medal played at chest height, looked down at, is easily tipped
-     * back 35 degrees at the coin press that takes the zero, and then tipping it the further
-     * 8 degrees a game wants for "up" crossed the limit, the reading froze just short, and
-     * that one direction never registered. Trust it out to about 73 degrees; the in-plane
-     * signal is still a quarter of gravity there, plenty for the angle. Flat is still flat.
+     * The twist is the direction of gravity within the panel, and as the panel goes through
+     * flat that direction swings round by 180 degrees in an instant - a medal tipped a little
+     * past flat for "up" read as hard left, then hard right. Past about 75 degrees from
+     * vertical the twist is held at its last good value; the tip still reads.
      */
-    return in_plane > 0.3f * fabsf((float)az);
+    static float last_lr;
+    if (in_plane > 0.27f * fabsf((float)az)) last_lr = atan2f((float)ay, (float)ax) * 57.2958f;
+    *lr = last_lr;
+    /*
+     * Held, not lying on a table. This used to demand the medal be within 40 degrees of
+     * vertical, then 73, and both were wrong in the same way: a player who looks down at a
+     * medal held nearly flat in the palm has a resting posture past the limit, and tipping
+     * it further for "up" froze the reading just short of the threshold, so that one
+     * direction never registered. The only posture that must be rejected is a medal lying
+     * on a table, where the in-plane component of gravity is nothing but noise. So the test
+     * is absolute: an eighth of gravity in the plane (about 7 degrees off flat) is enough
+     * for the angles, and a zero read from a failed I2C transfer fails it too.
+     */
+    return in_plane > 2000.0f;
 }
 
 bool medal_input_recentre(void)

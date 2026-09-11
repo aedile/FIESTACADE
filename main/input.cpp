@@ -94,16 +94,22 @@ static bool read_roll(float *deg)
     int16_t ax, ay, az;
     qmi8658_read_accel(&ax, &ay, &az);
     float in_plane = sqrtf((float)ax * ax + (float)ay * ay);
-    *deg = atan2f((float)ay, (float)ax) * 57.2958f;
+    /* the roll swings round by 180 degrees as the panel passes through flat; past about 75
+     * degrees from vertical hold the last good value rather than spin the carousel */
+    static float last_deg;
+    if (in_plane > 0.27f * fabsf((float)az)) last_deg = atan2f((float)ay, (float)ax) * 57.2958f;
+    *deg = last_deg;
     /*
-     * Held up, not lying down. The limit used to be 40 degrees off vertical, which sounds
-     * generous and is not: a medal played at chest height, looked down at, is easily tipped
-     * back 35 degrees at the coin press that takes the zero, and then tipping it the further
-     * 8 degrees a game wants for "up" crossed the limit, the reading froze just short, and
-     * that one direction never registered. Trust it out to about 73 degrees; the in-plane
-     * signal is still a quarter of gravity there, plenty for the angle. Flat is still flat.
+     * Held, not lying on a table. This used to demand the medal be within 40 degrees of
+     * vertical, then 73, and both were wrong in the same way: a player who looks down at a
+     * medal held nearly flat in the palm has a resting posture past the limit, and tipping
+     * it further for "up" froze the reading just short of the threshold, so that one
+     * direction never registered. The only posture that must be rejected is a medal lying
+     * on a table, where the in-plane component of gravity is nothing but noise. So the test
+     * is absolute: an eighth of gravity in the plane (about 7 degrees off flat) is enough
+     * for the angles, and a zero read from a failed I2C transfer fails it too.
      */
-    return in_plane > 0.3f * fabsf((float)az);
+    return in_plane > 2000.0f;
 }
 
 static float wrap_deg(float d)
