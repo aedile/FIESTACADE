@@ -157,6 +157,12 @@ Rules that were learned the hard way and are easy to violate without noticing:
 - **Do not skip the hardware step.** A host harness that stubs the panel is only
   as honest as the stub: one verified pixels perfectly for two days while the
   real DMA path was throwing most of them away. Prove a change on the medal.
+- **Do not power the codec down without a path back up.** The shared
+  `audio_hal` copied into every game deletes the I2S channel and sleeps the
+  ES8311 on mute; for months nothing re-powered them, so the 3 s mute hold was
+  one-way in every game. `audio_set_mute(false)` now calls
+  `audio_set_power_state(true)`; keep that when the HAL is copied or rewritten,
+  and test the hold twice, not once.
 
 ## Build
 
