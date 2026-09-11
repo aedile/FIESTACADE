@@ -18,13 +18,19 @@
 #define COL_GREEN 2
 #define COL_CYAN  3
 #define COL_RED   4
-#define COL_WHITE 7
-#define COL_YELLOW 6
 #define TIE_SEGS  94             /* every TIE fighter, exactly */
 #define MIN_TARGET_SEGS 8        /* smaller red or green than this is debris or a star */
 #define CROSSHAIR_SEGS 16
 
 #define MAX_CLUSTERS 48
+
+/* the trigger: how often it may be pulled. These three are the whole of how "trigger-happy"
+ * the autopilot sounds. A shot costs one from a small budget that refills slowly, so the
+ * long-run average is the refill rate and a burst is the budget's size. */
+#define SHOT_REFILL_US   1000000u    /* one shot a second, on average */
+#define SHOT_BURST       3           /* up to this many in quick succession */
+#define SHOT_GAP_US      250000u     /* never faster than this, budget or no */
+#define PORT_GAP_US      125000u     /* at the exhaust port: eight a second, budget ignored */
 
 typedef struct { int c, n, x0, y0, x1, y1; } cluster_t;
 
@@ -38,19 +44,24 @@ static int cross_x, cross_y, have_cross;
 static int tgt_x, tgt_y, have_tgt, ntargets;
 static int port_ahead;               /* the "EXHAUST PORT AHEAD" banner is up */
 static int have_vp, vp_x, vp_y;      /* the trench's vanishing point: where the exhaust port appears */
-static int last_cx, last_cy, have_last;   /* the crosshair a frame ago, for damping */
 static int last_tx, last_ty, have_last_tgt, tvx, tvy;   /* the target a frame ago, for leading */
-static int in_trench;                /* the trench walls are on screen */
+static int in_trench;                /* the trench walls are on screen (held for a while after) */
+static int trench_seen_frames;       /* frames since the walls were last positively seen */
+static int port_x, port_y, have_port;    /* the exhaust port: a tiny red mark at the end of the trench */
+static uint64_t last_fire_us;        /* when the trigger was last pulled: presses are timed, not counted */
+static int trench_frames;            /* how long the walls have been up, continuously, in frames */
+static int new_frame;                /* ap_frame has run since ap_update last looked */
 
 void ap_init(const ap_config_t *c)
 {
     cfg = *c;
     if (!cfg.idle_us)     cfg.idle_us = 100u * 1000000u;
-    if (!cfg.lost_us)     cfg.lost_us = 5u * 1000000u;
-    if (!cfg.max_game_us) cfg.max_game_us = 300u * 1000000u;
+    if (!cfg.lost_us)     cfg.lost_us = 10u * 1000000u;
+    if (!cfg.max_game_us) cfg.max_game_us = 900u * 1000000u;
     state = AP_IDLE;
     idle_since = game_since = lost_since = start_since = 0;
     have_cross = have_tgt = ntargets = 0;
+    have_port = 0; trench_seen_frames = 1000; trench_frames = 0; last_fire_us = 0;
 }
 
 ap_state_t ap_state(void) { return state; }
@@ -58,15 +69,9 @@ int ap_targets(void) { return ntargets; }
 void ap_crosshair(int *x, int *y) { *x = cross_x; *y = cross_y; }
 int  ap_have_cross(void) { return have_cross; }
 int  ap_port_ahead(void) { return port_ahead; }
-static cluster_t dbg_yellow[MAX_CLUSTERS]; static int dbg_nyellow;
-int ap_debug_yellow(int i, int *n, int *x0, int *y0, int *x1, int *y1)
-{
-    if (i >= dbg_nyellow) return 0;
-    *n = dbg_yellow[i].n; *x0 = dbg_yellow[i].x0; *y0 = dbg_yellow[i].y0; *x1 = dbg_yellow[i].x1; *y1 = dbg_yellow[i].y1;
-    return 1;
-}
 int  ap_in_trench(void) { return in_trench; }
 void ap_target(int *x, int *y, int *have) { *x = tgt_x; *y = tgt_y; *have = have_tgt; }
+void ap_port(int *x, int *y, int *have) { *x = port_x; *y = port_y; *have = have_port; }
 
 /*
  * Group the drawn segments of one colour into clusters by endpoint proximity. This is the
@@ -126,8 +131,39 @@ static int in_play(const cluster_t *c)
     return cx >= PLAY_X0 && cx <= PLAY_X1 && cy >= PLAY_Y0 && cy <= PLAY_Y1;
 }
 
+/*
+ * The banner line under the score ("USE THE FORCE", "EXHAUST PORT AHEAD", "EXHAUST PORT
+ * MISSED", "SHIELD GONE") changes colour every frame, so it is read by shape: the words are
+ * runs of drawn columns in the band y 30..70, split at gaps of a dozen pixels or more, and
+ * "EXHAUST PORT AHEAD" is three words 56, 39 and 48 pixels wide, left to right. "MISSED" is
+ * 60 wide, which keeps the two apart.
+ */
+static int banner_port_ahead(const avg_t *avg)
+{
+    uint8_t col[256]; memset(col, 0, sizeof col);
+    for (int i = 0; i < avg->npoints; i++) {
+        const avg_point_t *q = &avg->points[i];
+        int x = (int)(q->x >> 16), y = (int)(q->y >> 16);
+        if (q->intensity && y >= 45 && y <= 66 && x >= 0 && x < 256) col[x] = 1;
+    }
+    int w[8], nw = 0, x0 = -1, last = -100;
+    for (int x = 0; x < 256; x++) {
+        if (!col[x]) continue;
+        if (x - last >= 14) { if (x0 >= 0 && nw < 8) w[nw++] = last - x0; x0 = x; }
+        last = x;
+    }
+    if (x0 >= 0 && nw < 8) w[nw++] = last - x0;
+    /* measured on the harness: EXHAUST PORT AHEAD = 80, 43, 56 (the first run includes a
+     * cockpit mark to its left); EXHAUST PORT MISSED = 80, 43, 68; and now and then the last
+     * two words run together, 115 for AHEAD against 127 for MISSED */
+    if (nw == 3) return w[0] >= 50 && abs(w[1] - 43) <= 8 && abs(w[2] - 56) <= 6;
+    if (nw == 2) return w[0] >= 50 && abs(w[1] - 115) <= 6;
+    return 0;
+}
+
 void ap_frame(const avg_t *avg)
 {
+    new_frame = 1;
     static cluster_t cl[MAX_CLUSTERS];
     have_frame = 1;
 
@@ -139,7 +175,6 @@ void ap_frame(const avg_t *avg)
      */
     int n = gather(avg, COL_CYAN, cl, MAX_CLUSTERS);
     int prev_x = cross_x, prev_y = cross_y, prev_ok = have_cross;
-    last_cx = cross_x; last_cy = cross_y; have_last = have_cross;
     have_cross = 0;
     int nearest = 0x7fffffff;
     for (int i = 0; i < n; i++) {
@@ -152,23 +187,42 @@ void ap_frame(const avg_t *avg)
     }
 
     /*
-     * The trench, and the moment that matters in it. The walls are one green cluster spanning
-     * the screen. The exhaust port has no signature of its own - its lines are green and merge
-     * into the trench floor - but the game announces it: "EXHAUST PORT AHEAD" is two yellow
-     * clusters of about forty segments each, just under the top band. While that banner is up
-     * the port is dead ahead at the trench's vanishing point, so that is where to aim and hold
-     * the trigger. Missing it is what ended every game so far.
+     * The trench. The walls are one green cluster spanning the screen. Seeing them is not
+     * reliable every frame - a wall can drop out of the list as it scrolls past, and for
+     * seconds at a time when the ship is hard against one side - so the flag is held for
+     * three seconds after the last positive sighting rather than flickering.
      */
-    n = gather(avg, COL_YELLOW, cl, MAX_CLUSTERS);
-    memcpy(dbg_yellow, cl, sizeof(cluster_t) * n); dbg_nyellow = n;
-    int banner = 0;
-    for (int i = 0; i < n; i++)
-        if (cl[i].n >= 28 && cl[i].n <= 60 && cl[i].y0 >= 30 && cl[i].y1 <= 70 && cl[i].x0 > 30) banner++;
-    port_ahead = banner >= 2;
     n = gather(avg, COL_GREEN, cl, MAX_CLUSTERS);
-    in_trench = 0;
+    int walls = 0;
     for (int i = 0; i < n; i++)
-        if (cl[i].n >= 25 && cl[i].x1 - cl[i].x0 >= 200 && cl[i].y1 - cl[i].y0 >= 150) in_trench = 1;
+        if (cl[i].n >= 25 && cl[i].x1 - cl[i].x0 >= 200 && cl[i].y1 - cl[i].y0 >= 150) walls = 1;
+    if (walls) trench_seen_frames = 0; else if (trench_seen_frames < 1000) trench_seen_frames++;
+    in_trench = trench_seen_frames < 100;
+    trench_frames = in_trench ? trench_frames + 1 : 0;
+
+    /*
+     * The exhaust port. It shows for about a second at the end of each trench run: a tiny
+     * red mark, four segments, at the point the walls converge, growing into the base of
+     * the end wall as it rushes up. The "EXHAUST PORT AHEAD" banner comes up with it, and
+     * that is read by shape (above) since its colour changes every frame. The mark is
+     * accepted on its own only once the trench has been up a few seconds: on the way in,
+     * over the surface, other small red things pass through the same box.
+     */
+    have_port = 0; port_ahead = 0;
+    if (in_trench) {
+        port_ahead = banner_port_ahead(avg);
+        n = gather(avg, COL_RED, cl, MAX_CLUSTERS);
+        for (int i = 0; i < n; i++) {
+            const cluster_t *c = &cl[i];
+            if (c->n < 2 || c->n > 16) continue;
+            if (c->x1 - c->x0 > 24 || c->y1 - c->y0 > 24) continue;
+            int cx = (c->x0 + c->x1) / 2, cy = (c->y0 + c->y1) / 2;
+            if (cx < 85 || cx > 165 || cy < 150 || cy > 255) continue;
+            if (!port_ahead && trench_frames < 120) continue;
+            port_x = cx; port_y = cy; have_port = 1;
+            break;
+        }
+    }
 
     /*
      * The exhaust port has no mark of its own - it sits at the point the trench walls converge
@@ -221,6 +275,16 @@ void ap_frame(const avg_t *avg)
         for (int i = 0; i < n; i++) {
             const cluster_t *c = &cl[i];
             if (c->n < MIN_TARGET_SEGS || !in_play(c)) continue;
+            if (c->y1 < 70 && c->x1 - c->x0 > 40) continue;    /* a line of banner text under the score */
+            if (colour == COL_RED && in_trench) {
+                /* the trench walls are lined with laser turrets: tall thin red things, up to a
+                 * hundred segments in a column a few pixels wide. Shooting them is points, and
+                 * a pilot who shoots every one of them never stops firing, which is the one
+                 * thing this pilot must not do. The fireballs they throw are the danger, and
+                 * those are as wide as they are tall. So: tall and thin is left alone. */
+                int w = c->x1 - c->x0, h = c->y1 - c->y0;
+                if (h > 2 * w + 6) continue;
+            }
             if (colour == COL_GREEN) {
                 /* a TIE is exactly 94 segments, or 188 when two overlap, and never wider than a
                  * hand's breadth; the trench walls are green and span the screen */
@@ -274,12 +338,12 @@ void ap_update(sw_input_t *in, uint64_t now_us, int human_active)
         return;
 
     case AP_PLAYING: {
-        /* AP tuning: the yoke is a laggy rate command, so control is proportional-plus-damping
-         * on the crosshair-to-target error. The two gains below (6 and 18, over 8) are the
-         * whole of the feel: raise the 6 to chase harder, raise the 18 to settle rather than
-         * oscillate. Measured signs: yaw 0 = right, 255 = left; pitch 255 = up, 0 = down. */
-        /* the game is over when the crosshair has been gone a while, or we have flown long enough */
-        if (!have_cross) { if (!lost_since) lost_since = now_us; }
+        /* the game is over when the crosshair has been gone a while, or we have flown long
+         * enough; the select screen at the start does not count, its crosshair is odd */
+        uint64_t t_game = now_us - game_since;
+        int selecting = t_game < 13000000u;
+        int sweeping  = t_game >= 13000000u && t_game < 15000000u;
+        if (!have_cross && !selecting) { if (!lost_since) lost_since = now_us; }
         else lost_since = 0;
         if ((lost_since && now_us - lost_since > cfg.lost_us) || now_us - game_since > cfg.max_game_us) {
             state = AP_IDLE; idle_since = now_us; lost_since = 0;
@@ -287,57 +351,103 @@ void ap_update(sw_input_t *in, uint64_t now_us, int human_active)
             return;
         }
         /*
-         * Steering. The yoke is a velocity-ish input and the crosshair drifts, so this is a
-         * plain proportional push on the error between where the crosshair is and where the
-         * target is, clamped to the yoke's throw. With nothing to shoot, ease back to centre.
+         * Where to aim. The first dozen seconds of a game are the "select a Death Star" screen:
+         * three green Death Stars and red labels, and a shot while the crosshair is on one of
+         * them picks that difficulty. Left alone, the countdown picks Easy, which is the one
+         * this pilot can fly. So: centre and no trigger until the countdown has run out.
+         * After that: the exhaust port when it is there, else the nearest threat - a fireball,
+         * a turret, a TIE - led a frame by its own motion, else (in the trench, between
+         * threats) a spot a little below the vanishing point, where the port will show up.
          */
+        int aim_x = CX, aim_y = CY, shoot_here = 0, tol = 20;
+        if (selecting)                   { aim_x = CX; aim_y = CY; }
+        else if (sweeping) {
+            /*
+             * The game calibrates the yoke itself: it takes the least and greatest readings it
+             * has seen as the ends of the yoke's travel, and maps those to the edges of the
+             * screen. Until it has seen the ends, the map is whatever range it has seen so
+             * far, stretched to fit - which for an autopilot that only ever nudges is a map
+             * off by forty pixels and a quarter again too steep. So, the moment the countdown
+             * is done and before anything shoots back: a second of yoke to all four corners.
+             * From then on the map below holds.
+             */
+            int corner = (int)((t_game - 13000000u) / 500000u) & 3;
+            in->yaw   = (corner == 1 || corner == 2) ? 255 : 0;
+            in->pitch = (corner >= 2) ? 255 : 0;
+            in->fire = 0;
+            return;
+        }
+        else if (in_trench && have_port)  { aim_x = port_x; aim_y = port_y; shoot_here = 1; tol = 20; }
+        else if (in_trench && port_ahead) { aim_x = have_vp ? vp_x : CX; aim_y = (have_vp ? vp_y : CY) + 4; shoot_here = 1; tol = 30; }
+        else if (have_tgt)                { aim_x = tgt_x + tvx * LEAD; aim_y = tgt_y + tvy * LEAD; shoot_here = 1; }
+        else if (in_trench && have_vp)    { aim_x = vp_x; aim_y = vp_y + 4; }     /* where the port will show */
+        else if (in_trench)               { aim_x = CX;   aim_y = CY + 4; }
         /*
-         * Where to aim. In the trench, hold the vanishing point - that is trench survival and
-         * the exhaust-port shot at once. Otherwise chase the nearest threat, led by its own
-         * velocity times LEAD frames so the shot arrives where the target is going rather than
-         * where it was a frame or two ago, which is the lag. With nothing to do, ease to centre.
+         * The yoke is an absolute position, not a rate: the crosshair goes where the yoke is,
+         * settling in well under half a second, in every phase. Measured on the harness with
+         * the yoke held still: yaw 0 puts the crosshair at x=13, 255 at x=236, 128 at x=125;
+         * pitch 255 puts it at y=55, 0 at y=268, 128 at y=133. So steering is the inverse of
+         * that map, plus a slow trim from the crosshair actually seen, in case the map is a
+         * pixel or two off somewhere.
          */
-        int aim_x = CX, aim_y = CY, shoot_here = 0;
-        if (in_trench && have_vp)        { aim_x = vp_x; aim_y = vp_y; shoot_here = 1; }
-        else if (in_trench)              { aim_x = CX;   aim_y = CY;   shoot_here = 1; }
-        else if (have_tgt)               { aim_x = tgt_x + tvx * LEAD; aim_y = tgt_y + tvy * LEAD; shoot_here = 1; }
-
-        int ex = have_cross ? aim_x - cross_x : 0;
-        int ey = have_cross ? aim_y - cross_y : 0;
-        /*
-         * Signs, measured from command-then-response across consecutive frames: yaw 0 moves the
-         * crosshair right and yaw 255 left; pitch 255 moves it up (smaller y) and pitch 0 down.
-         * Both are the opposite of the obvious guess. Note also that the crosshair's travel is
-         * limited per phase - in the trench it lives in a box about fifty pixels square - so a
-         * controller that is not damped simply bounces between the walls of that box.
-         */
-        /*
-         * The yoke is a velocity command with a few frames of lag, so plain proportional
-         * control on position slams the crosshair from one edge to the other and never lands.
-         * This is proportional-plus-damping: push toward the target, but back off in
-         * proportion to how fast the crosshair is already moving that way. Gains are in
-         * eighths to stay in integers.
-         */
-        int vx = have_last ? cross_x - last_cx : 0;
-        int vy = have_last ? cross_y - last_cy : 0;
-        int yaw   = 0x80 - (ex * 6 - vx * 18) / 8;
-        int pitch = 0x80 - (ey * 6 - vy * 18) / 8;
+        int new_frame_seen = new_frame;
+        static int trim_x, trim_y;
+        if (have_cross && !selecting && new_frame) {
+            int ex = aim_x - cross_x, ey = aim_y - cross_y;
+            if (abs(ex) < 40) trim_x += (ex > 0) - (ex < 0);
+            if (abs(ey) < 40) trim_y += (ey > 0) - (ey < 0);
+            if (trim_x > 30) trim_x = 30;
+            if (trim_x < -30) trim_x = -30;
+            if (trim_y > 30) trim_y = 30;
+            if (trim_y < -30) trim_y = -30;
+        }
+        new_frame = 0;
+        int yaw   = (aim_x + trim_x - 13) * 255 / 223;
+        int pitch = (268 - (aim_y + trim_y)) * 255 / 213;
         if (yaw < 0) yaw = 0;
         if (yaw > 255) yaw = 255;
         if (pitch < 0) pitch = 0;
         if (pitch > 255) pitch = 255;
         in->yaw = (uint8_t)yaw;
         in->pitch = (uint8_t)pitch;
-        /* shoot whenever there is something to shoot at and we are roughly on it; the trigger
-         * is pulsed, because the game fires on the press, not while held */
-        static int trig;
-        trig++;
-        /* In the trench, hold fire until the game calls the exhaust port ("EXHAUST PORT AHEAD"
-         * is up) - a constant barrage down the trench drowns the music and looks nothing like
-         * a pilot. Outside it, shoot a threat once the crosshair is close. The trigger is
-         * pulsed, because the game fires on the press. */
-        int on_target = shoot_here && (in_trench ? port_ahead : (abs(ex) < 30 && abs(ey) < 30));
-        in->fire = on_target ? (trig & 1) : 0;
+        /*
+         * The trigger. Holding it, or pulsing it every frame, is a barrage that drowns the
+         * music and sounds nothing like a pilot. So: a short pull, only with the crosshair on
+         * something worth a shot, and out of a small budget that keeps the average down to
+         * about one a second (the SHOT_ defines above) - except at the exhaust port, which is
+         * small and passes quickly. Timed in microseconds so the medal, which runs
+         * this once a display frame, and the harness, which runs it far more often, agree.
+         */
+        /*
+         * The crosshair vanishes from the reader for a frame or a few now and then - most
+         * tellingly at the exhaust port, whose mark is drawn in the same cyan right where the
+         * crosshair is waiting, so the two merge and neither is recognised. The yoke is an
+         * absolute position and the crosshair does not move on its own, so where it was a
+         * moment ago is where it still is: remember it for a second.
+         */
+        static int mem_cx, mem_cy, mem_age = 1000;
+        if (have_cross) { mem_cx = cross_x; mem_cy = cross_y; mem_age = 0; }
+        else if (new_frame_seen && mem_age < 1000) mem_age++;
+        int use_cross = have_cross || mem_age < 40;
+        int ex = use_cross ? aim_x - mem_cx : 999;
+        int ey = use_cross ? aim_y - mem_cy : 999;
+        int on_target = shoot_here && abs(ex) < tol && abs(ey) < tol;
+        int port_mode = in_trench && (have_port || port_ahead);
+        uint64_t period = port_mode ? PORT_GAP_US : SHOT_GAP_US;
+        /* the budget (see SHOT_REFILL_US); the exhaust port is exempt, that second is what the
+         * whole run is for */
+        static uint64_t budget_us;           /* the clock the budget was last settled at */
+        static int shots_in_hand;
+        if (!budget_us) { budget_us = now_us; shots_in_hand = SHOT_BURST; }
+        static uint64_t refill_acc;
+        refill_acc += now_us - budget_us; budget_us = now_us;
+        while (refill_acc >= SHOT_REFILL_US) { refill_acc -= SHOT_REFILL_US; if (shots_in_hand < SHOT_BURST) shots_in_hand++; }
+        int may_fire = port_mode || shots_in_hand > 0;
+        if (on_target && may_fire && now_us - last_fire_us >= period) {
+            last_fire_us = now_us;
+            if (!port_mode) shots_in_hand--;
+        }
+        in->fire = (now_us - last_fire_us) < 60000u && last_fire_us != 0;
         return;
     }
     }

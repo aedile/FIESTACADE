@@ -300,8 +300,11 @@ void audio_set_mute(bool muted)
     // Power off amplifier when muting to save battery
     if (muted) {
         audio_set_power_state(false);
+    } else {
+        /* power-off deleted the I2S channel and slept the codec; nothing else brings them
+         * back, so unmute has to, or the game stays silent for good */
+        audio_set_power_state(true);
     }
-    // Note: When unmuting, let the main loop handle amplifier power based on audio activity
     
     ESP_LOGI(TAG, "Audio mute: %s", muted ? "ON" : "OFF");
 }

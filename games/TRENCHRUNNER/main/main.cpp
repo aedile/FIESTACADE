@@ -116,6 +116,9 @@ extern "C" void app_main(void)
 
         input_update(sw_input());
         ap_update(sw_input(), (uint64_t)now, input_human_active());
+        static bool fire_prev; static unsigned long fire_presses;
+        if (sw_input()->fire && !fire_prev) fire_presses++;
+        fire_prev = sw_input()->fire;
 
         /* run the 6809 for the wall-clock time that passed (1.512 MHz) */
         uint32_t cycles = (uint32_t)(elapsed * SW_CPU_CLOCK / 1000000);
@@ -139,7 +142,7 @@ extern "C" void app_main(void)
         if (now - last_report >= 5000000) {
             sw_stats_t *st = sw_stats();
             uint32_t drawn = render_frames_drawn(), dropped = render_frames_dropped();
-            ESP_LOGI(TAG, "%llums: emulated %lu, drawn %lu, dropped %lu, skipped %lu; ms/s: emu-total %llu (6809 %llu, avg %llu, math %llu, submit %llu) render %llu audio %llu; idle-skip main %lu%% snd %lu%%; sndrst %lu; underruns %lu speech-gaps %lu; heap %lu; pc %04X",
+            ESP_LOGI(TAG, "%llums: emulated %lu, drawn %lu, dropped %lu, skipped %lu; ms/s: emu-total %llu (6809 %llu, avg %llu, math %llu, submit %llu) render %llu audio %llu; idle-skip main %lu%% snd %lu%%; sndrst %lu; underruns %lu speech-gaps %lu; heap %lu; pc %04X; ap %d presses %lu",
                      (unsigned long long)((now - last_report) / 1000),
                      (unsigned long)frames_emulated, (unsigned long)drawn, (unsigned long)dropped, (unsigned long)frames_skipped,
                      (unsigned long long)(t_emu / 5000),
@@ -150,7 +153,8 @@ extern "C" void app_main(void)
                      (unsigned long)(sw_idle_skipped() / (5 * SW_CPU_CLOCK / 100)),
                      (unsigned long)(snd_idle_skipped() / (5 * SW_CPU_CLOCK / 100)),
                      (unsigned long)sw_soundrst_count(), (unsigned long)audio_get_underrun_count(), (unsigned long)snd_speech_underruns(),
-                     (unsigned long)esp_get_free_heap_size(), sw_pc());
+                     (unsigned long)esp_get_free_heap_size(), sw_pc(), (int)ap_state(), fire_presses);
+            fire_presses = 0;
             memset(st, 0, sizeof(*st));
             frames_emulated = 0; frames_skipped = 0;
             t_emu = 0; t_audio = 0;

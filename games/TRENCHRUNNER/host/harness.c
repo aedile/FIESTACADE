@@ -46,6 +46,9 @@ static void pc_top(void)
     memset(sw_dbg_pc_hist, 0, sizeof(sw_dbg_pc_hist));
 }
 static int frames_seen, frames_saved, last_points, last_visible;
+static int fire_presses, fire_prev;
+static int ap_mark(void) { int x, y, h; ap_port(&x, &y, &h); return h; }
+static int human_ev;                 /* --script human=1: a person has the yoke, the autopilot stands down */
 static char outdir[512];
 static double save_every = 1.0;
 static double next_save;
@@ -140,11 +143,9 @@ static void on_frame(const avg_t *avg, void *user)
     if (now_s >= next_save) {
         save_ppm(frames_saved++);
         { int cx, cy, tx, ty, ht; ap_crosshair(&cx, &cy); ap_target(&tx, &ty, &ht);
-          printf("t=%.2fs frame %d: %d pts  ap state %d cross %d (%d,%d) tgt %d (%d,%d) targets %d port %d trench %d yaw %u pitch %u fire %u\n",
+          printf("t=%.2fs frame %d: %d pts  ap state %d cross %d (%d,%d) tgt %d (%d,%d) targets %d port %d mark %d trench %d yaw %u pitch %u fire %u presses %d\n",
                  now_s, frames_saved - 1, avg->npoints, (int)ap_state(), ap_have_cross(), cx, cy, ht, tx, ty,
-                 ap_targets(), ap_port_ahead(), ap_in_trench(), sw_input()->yaw, sw_input()->pitch, sw_input()->fire);
-          for (int k = 0, n, x0, y0, x1, y1; ap_debug_yellow(k, &n, &x0, &y0, &x1, &y1); k++)
-              if (n >= 6) printf("      yellow %d segs x %d-%d y %d-%d\n", n, x0, x1, y0, y1); }
+                 ap_targets(), ap_port_ahead(), ap_mark(), ap_in_trench(), sw_input()->yaw, sw_input()->pitch, sw_input()->fire, fire_presses); fire_presses = 0; }
         next_save += save_every;
     }
 }
@@ -250,10 +251,13 @@ int main(int argc, char **argv)
                 else if (!strcmp(evs[e].key, "b2")) in->button2 = evs[e].val;
                 else if (!strcmp(evs[e].key, "b3")) in->button3 = evs[e].val;
                 else if (!strcmp(evs[e].key, "b4")) in->button4 = evs[e].val;
+                else if (!strcmp(evs[e].key, "human")) human_ev = evs[e].val;
                 evs[e].t = -1;
             }
         }
-        if (autoplay) ap_update(sw_input(), (uint64_t)(now_s * 1e6), 0);
+        if (autoplay) ap_update(sw_input(), (uint64_t)(now_s * 1e6), human_ev);
+        if (sw_input()->fire && !fire_prev) fire_presses++;
+        fire_prev = sw_input()->fire;
         sw_run(slice);
         if (!nosound) {
             /* always run the audio path: the speech chip only advances while rendering */

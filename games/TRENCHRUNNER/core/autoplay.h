@@ -6,10 +6,14 @@
  * once with nobody touching anything, this starts a game and plays it.
  *
  * It aims from the vector list we already generate. Every TIE fighter is exactly 94 green
- * segments; fireballs are red clusters in the middle of the screen; the crosshair is 16 cyan
- * segments and it drifts, so the yoke is driven closed-loop on where the crosshair actually
- * is rather than open-loop on where it ought to be. The cockpit brackets, the shield bar, the
- * score and the message text sit in fixed bands at the edges and are simply not looked at.
+ * segments; fireballs and turrets are red clusters in the middle of the screen; the trench
+ * walls are one green cluster spanning the screen; the exhaust port is a tiny red mark where
+ * the walls converge, and the banner that announces it is read by the widths of its words.
+ * The crosshair is 16 cyan segments. The yoke is an absolute position that the game
+ * calibrates from the extremes it has seen, so each game starts with a sweep to the four
+ * corners and thereafter the yoke is set from a fixed map, trimmed by where the crosshair
+ * actually is. The trigger is pulled in short timed pulses, at most five a second and only
+ * with the crosshair on something, so it sounds like a pilot rather than a barrage.
  *
  * A human touching anything takes over at once; the autopilot stays out until that game is
  * over and the attract has been left alone for a while again.
@@ -43,9 +47,9 @@ int  ap_targets(void);
 void ap_crosshair(int *x, int *y);
 int  ap_have_cross(void);
 int  ap_port_ahead(void);
-int  ap_debug_yellow(int i, int *n, int *x0, int *y0, int *x1, int *y1);
 int  ap_in_trench(void);
 void ap_target(int *x, int *y, int *have);
+void ap_port(int *x, int *y, int *have);
 
 #ifdef __cplusplus
 }

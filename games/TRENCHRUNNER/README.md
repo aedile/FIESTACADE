@@ -82,6 +82,16 @@ back for finishing a wave. High scores live only until the medal powers off.
 records how you're holding it the first time you press fire and treats that as
 centered. If it feels off, a short press of the TOP button re-centers it.
 
+**Left alone, it flies itself.** Fifteen seconds into the attract screen the
+medal starts a game and plays it: it lets the countdown pick the easy Death
+Star, shoots the TIE fighters and their fireballs, flies the trench shooting
+only the fireballs (never the wall guns), and puts a shot into the exhaust
+port when it opens. It takes the trigger the way a pilot would, a shot a second
+on average in short bursts, rather than a barrage. Touch any control and it
+hands over at once and stays out until your game is over. How trigger-happy it
+is lives in three numbers at the top of `core/autoplay.c` (`SHOT_REFILL_US`,
+`SHOT_BURST`, `SHOT_GAP_US`).
+
 ### Sound off
 
 Hold the MIDDLE button for three seconds and let go: the sound toggles off, or
