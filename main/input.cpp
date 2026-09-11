@@ -95,7 +95,15 @@ static bool read_roll(float *deg)
     qmi8658_read_accel(&ax, &ay, &az);
     float in_plane = sqrtf((float)ax * ax + (float)ay * ay);
     *deg = atan2f((float)ay, (float)ax) * 57.2958f;
-    return in_plane > 1.2f * fabsf((float)az);      /* held up, not lying down */
+    /*
+     * Held up, not lying down. The limit used to be 40 degrees off vertical, which sounds
+     * generous and is not: a medal played at chest height, looked down at, is easily tipped
+     * back 35 degrees at the coin press that takes the zero, and then tipping it the further
+     * 8 degrees a game wants for "up" crossed the limit, the reading froze just short, and
+     * that one direction never registered. Trust it out to about 73 degrees; the in-plane
+     * signal is still a quarter of gravity there, plenty for the angle. Flat is still flat.
+     */
+    return in_plane > 0.3f * fabsf((float)az);
 }
 
 static float wrap_deg(float d)
