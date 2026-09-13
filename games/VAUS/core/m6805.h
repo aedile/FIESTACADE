@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * m6805.h - Motorola MC6805 interpreter, as used by the MC68705P5 on Arkanoid's board.
  *

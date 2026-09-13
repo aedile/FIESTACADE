@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * mrdo.c - Universal Mr. Do! board: one Z80, two SN76489s, and a protection PAL answered
  * the way MAME answers it. The Z80 is Marat Fayzullin's portable core.

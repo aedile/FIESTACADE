@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * mpatrol.c - the M52 CPU board: memory and port maps, inputs, the vblank interrupt, and the
  * per-frame pacing of the sound board. The Z80 is Marat Fayzullin's portable core.

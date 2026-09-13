@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * digdug.c - Namco Dig Dug board: three Z80s, the 06XX bus controller and its two custom
  * I/O chips. Ported from this project family's Galaga core, which is the same arrangement.

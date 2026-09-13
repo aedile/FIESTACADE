@@ -5,6 +5,9 @@ __pycache__/
 .venv/
 build_docker/
 build/
+sdkconfig
+sdkconfig.old
+*.dSYM/
 lcd/preview/
 
 # marquee artwork is copyrighted (game logos); ship none - fetch or supply your own
@@ -30,6 +33,11 @@ games/**/host/*.dSYM/
 games/**/*.o
 games/**/*.ppm
 .DS_Store
+
+# gameplay/attract video is the publishers' copyright - never commit it
+*.mp4
+*.mjpeg
+*.mov
 
 # per-user build pick list (fiestacade pick)
 selection.txt

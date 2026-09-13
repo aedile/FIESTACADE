@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * joust.c - the 6809 CPU board: memory map, the ROM/RAM bank over the low 36 KB, the two PIAs,
  * the scanline interrupts and the SC1 blitter. The 6809 is vecx's e6809, included here so its

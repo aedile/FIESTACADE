@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * btime_sound.c - the sound board: a 6502 at 500 kHz and two AY-3-8910s. The main CPU's
  * command latch interrupts it; an NMI every sixteen scanlines, gated by an enable it writes,

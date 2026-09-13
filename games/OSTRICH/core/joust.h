@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * joust.h - Williams Joust (1982) board emulation: the 6809 CPU board with its Special Chip 1
  * blitter, the 4-bit bitmap video, and the Williams sound board's 6808 and 8-bit DAC.

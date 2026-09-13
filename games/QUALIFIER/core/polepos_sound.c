@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * polepos_sound.c - 8-voice Namco WSG, engine sample generator, 52XX speech samples,
  * 54XX noise (high-level). Follows MAME's namco.cpp (polepos_wsg), polepos_a.cpp and

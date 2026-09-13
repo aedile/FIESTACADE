@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * mario.c - Nintendo Mario Bros. board: the Z80 and its memory map.
  * The Z80 is Marat Fayzullin's portable core (see THIRD_PARTY_NOTICES.md).

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * m6800.h - a small Motorola 6800 core, one instruction a step, for the Williams sound board's
  * 6808. Include it once in a translation unit that first defines

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * centiped.c - Atari Centipede board: memory map, I/O, interrupts, trackball, EAROM.
  * The 6502 is Andre Weissflog's cycle-stepped core from the chips project (m6502.h).

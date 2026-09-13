@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * btime.c - Data East Burger Time board: the game's 6502 (in DECO's CPU-7 epoxy block, which
  * scrambles opcodes) and its memory map. The 6502 is the instruction-stepped core in

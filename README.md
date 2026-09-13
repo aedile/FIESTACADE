@@ -1,5 +1,11 @@
 # FIESTACADE
 
+> **Licensing in one line:** the code written here is 0BSD, but the assembled
+> bundle is **free to share, not to sell** — several games embed a
+> non-commercial Z80 core, and four are GPL-3.0. GitHub's sidebar says
+> "0BSD"; that covers our code only. Read [LICENSING.md](LICENSING.md)
+> before you distribute. No ROMs and no marquee art are included.
+
 A multi-game arcade medal for the **Waveshare ESP32-C6-LCD-1.69**. Tilt the medal
 to browse marquees, hold the button to pick a game, and it boots straight into
 that game from then on — until you deliberately come back to the menu.

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * btime_video.c - a 32x32 map of 8x8 characters in three bit planes, eight 16x16 sprites, and
  * an optional background of 16x16 tiles laid out by a PROM and scrolled along the hardware's

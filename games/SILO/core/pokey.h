@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * pokey.h - Atari POKEY sound generator (4 channels) - audio registers only.
  * Own implementation, sample-based, in the spirit of Ron Fries' pokeysnd.

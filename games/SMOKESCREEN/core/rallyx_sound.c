@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * rallyx_sound.c - the Namco 3-voice WSG (the same part Pac-Man and Galaga use, written
  * through the same pacman_sound_w register layout) and the discrete BANG circuit.

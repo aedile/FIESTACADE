@@ -27,11 +27,43 @@ Fayzullin-Z80 game.
 
 Games that embed the Fayzullin Z80 (non-commercial):
 
-> Pac-Man / Ms. Pac-Man (PELLETINO), Pole Position (QUALIFIER), Galaga
+> Pole Position (QUALIFIER), Galaga
 > (SWARMFIGHTER), Dig Dug (STRATUM), Donkey Kong (GIRDER), Frogger (RIBBIT),
 > Rally-X (SMOKESCREEN), Arkanoid (VAUS), Mario Bros (PLUMBER), Mr. Do! (BIGTOP),
 > Time Pilot (CHRONO), Root Beer Tapper (KEG), Moon Patrol (BUGGY), Space
 > Invaders (PHALANX), Galaxian (ARMADA), Gyruss (TOCCATA).
+
+## Emulator cores and MAME
+
+Most machine cores under `games/*/core/` were written for this project with
+MAME's drivers used as **hardware documentation** — memory maps, interrupt
+timing, palette decoding, PROM contents and measured sound levels. Those are
+facts about the silicon rather than copyrightable expression, and the cores are
+independent implementations, typically a fraction of the size of the MAME driver
+they were learned from.
+
+This was checked rather than assumed. Eleven cores were compared line-for-line
+against the current MAME source they cite:
+
+| core | ours | MAME driver | identical lines |
+|---|---|---|---|
+| missile.c | 260 | atari/missile.cpp (1421) | 0 |
+| centiped.c | 243 | atari/centiped.cpp (2398) | 0 |
+| galaxian.c | 140 | galaxian/galaxian.cpp (17305) | 0 |
+| polepos.c | 470 | namco/polepos.cpp (2581) | 0 |
+| mrdo.c | 159 | universal/mrdo.cpp (533) | 0 |
+| timeplt.c | 221 | konami/timeplt.cpp (1034) | 0 |
+| rallyx.c | 161 | namco/rallyx.cpp (1559) | 0 |
+| mario.c | 200 | nintendo/mario.cpp (1125) | 0 |
+| btime.c | 165 | dataeast/btime.cpp (3293) | 0 |
+| joust.c | 282 | williams/williams.cpp (4052) | 0 |
+| mpatrol.c | 147 | irem/m52.cpp (1182) | 0 |
+
+No shared line of substance in any of them. Every MAME driver involved is
+**BSD-3-Clause**, so even on the most conservative reading — that a core counts
+as derivative — the obligation is attribution and notice retention, not copyleft
+and not a commercial restriction. Each game's `THIRD_PARTY_NOTICES.md` names the
+drivers it was written from and carries that notice.
 
 ## GPL-3.0 games (the 6809 titles)
 

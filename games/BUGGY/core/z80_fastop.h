@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * z80_fastop.h - force-included when compiling Z80.c (see the CMake and Makefile): opcode and
  * operand fetches from the program ROM and the work RAM skip the bus function. The Z80 core's

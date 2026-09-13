@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * joust_video.c - the 4-bit bitmap. The byte at offset y + 256 * (x / 2) holds pixels x and
  * x + 1 of line y, even pixel in the high nibble. The palette is sixteen bytes of RGB 3-3-2,

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: 0BSD  Copyright (C) 2026 Jesse Castro
+ * Written for FIESTACADE; hardware behaviour referenced against MAME (BSD-3-Clause).
+ * See LICENSING.md, "Emulator cores and MAME". */
 /*
  * frogger.c - Konami Frogger board: two Z80s, two 8255 PPIs and an AY-3-8910.
  * The Z80 is Marat Fayzullin's portable core (see THIRD_PARTY_NOTICES.md).
