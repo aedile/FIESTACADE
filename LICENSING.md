@@ -65,6 +65,32 @@ as derivative — the obligation is attribution and notice retention, not copyle
 and not a commercial restriction. Each game's `THIRD_PARTY_NOTICES.md` names the
 drivers it was written from and carries that notice.
 
+## The launcher's own third-party code
+
+### TinyMidiLoader (zlib)
+
+`components/chiptune/include/tml.h` is TinyMidiLoader v0.7 by Bernhard Schelling,
+part of [TinySoundFont](https://github.com/schellingb/TinySoundFont), used under
+the zlib licence:
+
+> Copyright (C) 2017, 2018, 2020 Bernhard Schelling
+>
+> This software is provided 'as-is', without any express or implied warranty. In
+> no event will the authors be held liable for any damages arising from the use
+> of this software. Permission is granted to anyone to use this software for any
+> purpose, including commercial applications, and to alter it and redistribute it
+> freely, subject to the following restrictions: 1. The origin of this software
+> must not be misrepresented; you must not claim that you wrote the original
+> software. 2. Altered source versions must be plainly marked as such, and must
+> not be misrepresented as being the original software. 3. This notice may not be
+> removed or altered from any source distribution.
+
+The file is vendored unaltered and keeps its own header notice. It parses the
+splash MIDI; the AY-3-8910 playback around it is this project's own and 0BSD.
+
+The zlib licence is permissive and carries no copyleft or non-commercial term, so
+it does not change the bundle's licensing.
+
 ## GPL-3.0 games (the 6809 titles)
 
 Four games use the **vecx MC6809 core**, which is GPL-3.0. Those game images are
@@ -95,12 +121,14 @@ non-commercial or copyleft core:
 The non-commercial restriction on the bundle comes only from bundling them with
 the Fayzullin-Z80 games; on their own they carry no such limit.
 
-## Game ROMs and marquee art: not here, your responsibility
+## Game ROMs, marquee art and music: not here, your responsibility
 
-This project distributes **no game ROMs and no marquee artwork**. The ROMs are
+This project distributes **no game ROMs, no marquee artwork and no music**. The ROMs are
 copyrighted by their owners; the marquee art is copyrighted by its owners.
-`./fiestacade art` can fetch marquees from a third-party archive on your
-request, and you supply the ROMs yourself. What you do with copyrighted ROMs and
+`./fiestacade art` can fetch marquees from a third-party archive on your request,
+and you supply the ROMs yourself. The splash tune is whatever you drop in
+`music/splash.mid` (see `music/README.md`); nothing is committed, and the
+composition and the particular sequence are both someone's to license. What you do with copyrighted ROMs and
 art, and whether you are entitled to them, is between you and their owners.
 
 ---

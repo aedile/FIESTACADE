@@ -67,6 +67,9 @@ cmd_build() {
     say "artwork (text placeholders for anything without a real banner)"
     "$VENV/bin/python" tools/make_placeholders.py
     "$VENV/bin/python" tools/pack_marquees.py | tail -3
+    # music/splash.mid is picked up at CMake configure time, so make sure configure
+    # re-runs when it is added, removed or swapped
+    touch components/chiptune/CMakeLists.txt
     say "generating partition table"
     python3 tools/configure.py
     say "building firmware"

@@ -10,6 +10,10 @@ sdkconfig.old
 *.dSYM/
 lcd/preview/
 
+# splash music is the composer's; supply your own (see music/README.md)
+music/*.mid
+music/*.midi
+
 # marquee artwork is copyrighted (game logos); ship none - fetch or supply your own
 marquees/*.png
 marquees/_placeholder/

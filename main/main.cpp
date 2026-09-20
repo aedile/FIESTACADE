@@ -15,6 +15,9 @@
 #include "games.h"
 #include "mqart.h"
 #include "medalboot.h"
+#include "splash.h"
+#include "battery.h"
+#include "audio_hal.h"
 #include "display.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
@@ -40,6 +43,7 @@ static bool button_held_at_boot(void)
 
 static void launch(const char *rom)
 {
+    menu_init();                        /* may not have been needed until now */
     /* A shared slot (Pac-Man riding Ms. Pac-Man's image) records its own ROM as the
      * selection - so the image knows which variant to run - but chain-boots the slot
      * owner's partition. For every other game the boot label is the ROM itself. */
@@ -58,12 +62,13 @@ extern "C" void app_main(void)
         nvs_flash_init();
     }
 
+    battery_init();          /* holds the rail up: do this before anything else */
     display_init();
     display_set_backlight(DISPLAY_BRIGHTNESS_ACTIVE);
-    menu_init();
 
     if (mqart_init() != ESP_OK) {
         ESP_LOGE(TAG, "no marquee data");
+        menu_init();
         menu_show_message("NO ARTWORK", "FLASH THE MQART PARTITION");
         menu_render();
         while (true) vTaskDelay(pdMS_TO_TICKS(1000));
@@ -106,6 +111,16 @@ extern "C" void app_main(void)
         }
     }
 
+    /* Only on the way to the menu - a selected medal boots straight into its game
+     * above, and nobody wants six seconds of titles in front of every launch. */
+    audio_init();
+
+    /* The splash runs before the menu allocates. Its frame buffer is 178 KB and
+     * the song parses into a linked list about as large; both at once does not
+     * fit in 420 KB, and tml_load_memory does not survive a failed malloc. */
+    splash_run();
+    menu_init();
+
     /* Open the carousel on whatever was played last. */
     char last[24];
     if (medalboot_get_last(last, sizeof last)) menu_select_rom(last);
@@ -117,6 +132,7 @@ extern "C" void app_main(void)
     int64_t last_hold_draw = 0;
     while (true) {
         input_poll();
+        battery_tick();
 
         nav_t nav = input_take_nav();
         if (nav == NAV_NEXT) { menu_nav(+1); dirty = true; }

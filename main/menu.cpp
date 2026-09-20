@@ -10,6 +10,7 @@
 #include "gfx.h"
 #include "mqart.h"
 #include "input.h"
+#include "battery.h"
 #include "display.h"
 #include "esp_heap_caps.h"
 #include "esp_system.h"
@@ -50,6 +51,29 @@ static const char *s_msg1, *s_msg2;
 
 static uint16_t C_BG, C_TITLE, C_DIM, C_OK, C_ABSENT, C_DOT, C_DOT_OFF, C_HEAD, C_BAR, C_BAR_BG;
 
+/* battery meter, top right of the header */
+#define BATT_X 202
+#define BATT_Y   7
+#define BATT_W  26
+#define BATT_H  12
+
+static void draw_battery(gfx_band_t *b)
+{
+    int pct = battery_percent();
+    uint16_t c = pct <= BATT_CRIT_PCT ? C_ABSENT : pct <= BATT_LOW_PCT ? C_BAR : C_OK;
+    gfx_fill_rect(b, BATT_X, BATT_Y, BATT_W, 1, C_HEAD);
+    gfx_fill_rect(b, BATT_X, BATT_Y + BATT_H - 1, BATT_W, 1, C_HEAD);
+    gfx_fill_rect(b, BATT_X, BATT_Y, 1, BATT_H, C_HEAD);
+    gfx_fill_rect(b, BATT_X + BATT_W - 1, BATT_Y, 1, BATT_H, C_HEAD);
+    gfx_fill_rect(b, BATT_X + BATT_W, BATT_Y + 4, 2, BATT_H - 8, C_HEAD);   /* the nub */
+    int fill = (BATT_W - 4) * pct / 100;
+    if (fill > 0) gfx_fill_rect(b, BATT_X + 2, BATT_Y + 2, fill, BATT_H - 4, c);
+    char s[16];
+    snprintf(s, sizeof s, "%d", pct);
+    gfx_text(b, BATT_X - 8 * (int)strlen(s) - 6, BATT_Y + 1, s, 1, C_DIM);
+}
+
+
 /* Quarter brightness, in the big-endian order the band uses. */
 static inline uint16_t dim_be(uint16_t be)
 {
@@ -61,6 +85,7 @@ static inline uint16_t dim_be(uint16_t be)
 
 void menu_init(void)
 {
+    if (s_band) return;                             /* called from a few places now */
     s_band_h = GFX_H;
     s_band = (uint16_t *)heap_caps_malloc((size_t)GFX_W * s_band_h * 2, MALLOC_CAP_DMA);
     if (!s_band) {                                  /* no room for the whole screen */
@@ -192,6 +217,7 @@ void menu_render_range(int ry0, int ry1)
             if (s_msg2) gfx_text_center(&band, GFX_W / 2, 156, s_msg2, 1, C_DIM);
         } else if (e) {
             gfx_text_center(&band, GFX_W / 2, HEADER_Y, "FIESTACADE", 1, C_HEAD);
+            draw_battery(&band);
             draw_marquee_into(&band, e, installed || s_mode == MENU_LAUNCHING);
             int ts = title_scale(e->title);
             /* keep the baseline where it is when the title drops a size */

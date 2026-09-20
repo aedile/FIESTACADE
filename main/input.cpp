@@ -13,6 +13,7 @@
  */
 #include "input.h"
 #include "qmi8658.h"
+#include "battery.h"
 #include "driver/gpio.h"
 #include "driver/i2c.h"
 #include "esp_log.h"
@@ -25,8 +26,6 @@ static const char *TAG = "input";
 
 #define PIN_BTN_BOOT      GPIO_NUM_9
 #define PIN_BTN_PWR       GPIO_NUM_18
-#define PIN_BAT_EN        GPIO_NUM_15    /* hold HIGH or the medal cuts its own power */
-
 #define PWR_LONG_PRESS_US 1000000
 #define IMU_PERIOD_US       16000        /* ~60 Hz is plenty for a menu */
 
@@ -73,6 +72,7 @@ static int     repeats;                  /* how many the current hold has fired 
 static int64_t held_since, last_repeat;
 static nav_t   pending_nav = NAV_NONE;
 
+static bool    boot_armed, pwr_armed;          /* seen released since boot? */
 static bool    boot_was_down, hold_consumed, pending_hold;
 static bool    boot_seen_up;             /* a press only counts once the button has been up after boot */
 static int64_t boot_down_since;
@@ -143,12 +143,6 @@ static void clear_neutral(void)
 
 void input_init(void)
 {
-    gpio_config_t bat = {};
-    bat.pin_bit_mask = 1ULL << PIN_BAT_EN;
-    bat.mode = GPIO_MODE_OUTPUT;
-    gpio_config(&bat);
-    gpio_set_level(PIN_BAT_EN, 1);
-
     gpio_config_t io = {};
     io.pin_bit_mask = (1ULL << PIN_BTN_BOOT) | (1ULL << PIN_BTN_PWR);
     io.mode = GPIO_MODE_INPUT;
@@ -183,6 +177,10 @@ void input_poll(void)
     bool boot = gpio_get_level(PIN_BTN_BOOT) == 0;
     bool pwr  = gpio_get_level(PIN_BTN_PWR) == 0;
 
+    /* ignore whatever was already held when we booted, until it lets go */
+    if (!boot_armed) { if (!boot) boot_armed = true; boot = false; }
+    if (!pwr_armed)  { if (!pwr)  pwr_armed  = true; pwr  = false; }
+
     /* BOOT is a hold, not a press. Track how long it has been down so the menu can
      * draw a progress bar, and fire once when it crosses the threshold. A button that
      * was already down when we started is the tail of whatever brought us here - the
@@ -207,9 +205,7 @@ void input_poll(void)
     /* PWR: short press re-levels, long press kills battery rail */
     if (pwr && !pwr_was_down) pwr_down_since = now;
     if (pwr && now - pwr_down_since >= PWR_LONG_PRESS_US) {
-        ESP_LOGI(TAG, "power off");
-        gpio_set_level(PIN_BAT_EN, 0);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        battery_power_off();
     }
     if (!pwr && pwr_was_down && now - pwr_down_since < NAV_SHORT_PRESS_US) pending_nav = NAV_PREV;
     pwr_was_down = pwr;
